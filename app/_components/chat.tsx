@@ -2,22 +2,27 @@
 
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { commitProposed } from '@/app/farm/[secret]/actions'
+import { COUNT_UNIT, formatAmount } from '@/lib/ledger'
 import { EditSheet } from './edit-sheet'
-import { ReadBackList, type ReadBackRow } from './read-back-row'
 import type { ProposedMovement } from '@/lib/agent/tools'
 
 /**
- * The conversation, and the read-back that comes out of it.
+ * Surface 1, following design `1a`.
  *
- * The agent proposes; nothing is written until he taps. That boundary is the
- * product's central promise, so it lives in the interface rather than in a
- * prompt: there is no code path here that publishes without a tap.
+ * The details are the design's and they matter: bubbles carry asymmetric radii so
+ * the tail points at who spoke; the farmer's are full accent with white text
+ * because his own words should read as the loudest thing on screen; and the
+ * machinery sits *inline* in the flow behind a sage rule rather than in a panel,
+ * because it is the conversation with more of itself shown, not a log.
  *
- * Corrections are held locally against the tool call that produced them, so what
- * gets committed is what he saw and fixed — never what the model originally
- * guessed.
+ * The publish question lives inside the read-back card. That is deliberate — the
+ * question and the thing being agreed to are one object, so there is no way to
+ * tap "Put it up" without the rows being in view.
+ *
+ * The agent proposes; nothing is written until he taps. No code path here
+ * publishes without one.
  */
 export function Chat({ verbose }: { verbose: boolean }) {
   const { messages, sendMessage, status } = useChat({
@@ -28,20 +33,35 @@ export function Chat({ verbose }: { verbose: boolean }) {
   const [committed, setCommitted] = useState<Set<string>>(new Set())
   const [editing, setEditing] = useState<{ key: string; index: number } | null>(null)
   const [pending, startTransition] = useTransition()
+  const scroller = useRef<HTMLDivElement>(null)
 
   const busy = status === 'submitted' || status === 'streaming'
   const editingMovement = editing ? drafts[editing.key]?.[editing.index] : undefined
 
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, busy])
+
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex-1 space-y-5 px-4 pb-6 pt-8">
-        {messages.length === 0 && <ColdStart />}
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <div
+        ref={scroller}
+        className="flex flex-1 flex-col gap-4 overflow-y-auto px-[18px] pb-2 pt-[18px]"
+      >
+        {messages.length === 0 && (
+          <Bubble from="agent">
+            This is BreadBasket. Tell me what you&rsquo;ve got on the farm right now
+            &mdash; however you&rsquo;d say it to a customer. I&rsquo;ll show you what I
+            heard before anything goes public.
+          </Bubble>
+        )}
 
         {messages.map((message) =>
           message.parts.map((part, i) => {
             const key = `${message.id}-${i}`
 
             if (part.type === 'text') {
+              if (!part.text.trim()) return null
               return (
                 <Bubble key={key} from={message.role === 'user' ? 'him' : 'agent'}>
                   {part.text}
@@ -49,87 +69,49 @@ export function Chat({ verbose }: { verbose: boolean }) {
               )
             }
 
-            // The read-back — the only place a movement can become public.
             if (part.type === 'tool-proposeMovements' && 'output' in part && part.output) {
               const output = part.output as { movements: ProposedMovement[] }
               const movements = drafts[key] ?? output.movements
               const done = committed.has(key)
 
               return (
-                <div key={key} className="space-y-3">
-                  <ReadBackList
-                    rows={movements.map(toRow)}
-                    onEdit={
-                      done
-                        ? undefined
-                        : (index) => {
-                            setDrafts((d) => ({ ...d, [key]: d[key] ?? output.movements }))
-                            setEditing({ key, index })
-                          }
-                    }
-                  />
-                  {done ? (
-                    <p className="meta text-[13px]" style={{ color: 'var(--color-accent-2-700)' }}>
-                      It&rsquo;s up. Everything here expires, so it comes down on its own.
-                    </p>
-                  ) : (
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        disabled={pending}
-                        className="btn btn-primary"
-                        onClick={() =>
-                          startTransition(async () => {
-                            await commitProposed(movements)
-                            setCommitted((s) => new Set(s).add(key))
-                          })
-                        }
-                      >
-                        Put it up
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => setInput('Not quite — ')}
-                      >
-                        Fix something
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ReadBackCard
+                  key={key}
+                  movements={movements}
+                  done={done}
+                  pending={pending}
+                  onEdit={(index) => {
+                    setDrafts((d) => ({ ...d, [key]: d[key] ?? output.movements }))
+                    setEditing({ key, index })
+                  }}
+                  onPublish={() =>
+                    startTransition(async () => {
+                      await commitProposed(movements)
+                      setCommitted((s) => new Set(s).add(key))
+                    })
+                  }
+                  onFix={() => setInput('Not quite — ')}
+                />
               )
             }
 
-            // The machinery, at higher verbosity. Farm language, not logs.
             if (verbose && part.type.startsWith('tool-')) {
-              return (
-                <p
-                  key={key}
-                  className="meta text-[12px]"
-                  style={{ color: 'color-mix(in srgb, var(--color-text) 45%, transparent)' }}
-                >
-                  {narrate(part.type)}
-                </p>
-              )
+              return <Step key={key} type={part.type} />
             }
 
             return null
           }),
         )}
 
-        {busy && (
-          <p
-            className="meta text-[12px]"
-            style={{ color: 'color-mix(in srgb, var(--color-text) 45%, transparent)' }}
-          >
-            reading what you wrote…
-          </p>
-        )}
+        {busy && <Step type="thinking" />}
       </div>
 
       <form
-        className="sticky bottom-0 flex gap-2 px-4 py-3"
-        style={{ background: 'var(--color-bg)', borderTop: '1px solid var(--color-divider)' }}
+        className="flex flex-none items-center gap-2 px-[18px] pb-4 pt-3"
+        style={{
+          background: 'var(--color-bg)',
+          borderTop: '1px solid color-mix(in srgb, var(--color-text) 12%, transparent)',
+        }}
         onSubmit={(e) => {
           e.preventDefault()
           if (!input.trim() || busy) return
@@ -141,10 +123,18 @@ export function Chat({ verbose }: { verbose: boolean }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="what have you got?"
-          className="flex-1 rounded-full px-4 py-3 text-[16px]"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-divider)' }}
+          className="min-w-0 flex-1 rounded-full px-[17px] py-[13px] text-[15.5px]"
+          style={{
+            background: 'var(--color-surface)',
+            border: '1px solid color-mix(in srgb, var(--color-text) 12%, transparent)',
+          }}
         />
-        <button type="submit" disabled={busy || !input.trim()} className="btn btn-primary">
+        <button
+          type="submit"
+          disabled={busy || !input.trim()}
+          className="btn btn-primary flex-none"
+          style={{ padding: '13px 20px', fontSize: 15.5 }}
+        >
           Send
         </button>
       </form>
@@ -156,9 +146,7 @@ export function Chat({ verbose }: { verbose: boolean }) {
           onSave={(next) => {
             setDrafts((d) => ({
               ...d,
-              [editing.key]: (d[editing.key] ?? []).map((m, i) =>
-                i === editing.index ? next : m,
-              ),
+              [editing.key]: (d[editing.key] ?? []).map((m, i) => (i === editing.index ? next : m)),
             }))
             setEditing(null)
           }}
@@ -168,37 +156,157 @@ export function Chat({ verbose }: { verbose: boolean }) {
   )
 }
 
-function ColdStart() {
-  return (
-    <div className="space-y-3 pb-4">
-      <Bubble from="agent">
-        This is BreadBasket. Tell me what you&rsquo;ve got on the farm right now &mdash;
-        however you&rsquo;d say it to a customer. I&rsquo;ll show you what I heard before
-        anything goes public.
-      </Bubble>
-    </div>
-  )
-}
-
+/** Tail points at who spoke — the design's asymmetric radii. */
 function Bubble({ from, children }: { from: 'him' | 'agent'; children: React.ReactNode }) {
   const mine = from === 'him'
   return (
-    <div className={mine ? 'flex justify-end' : 'flex justify-start'}>
-      <p
-        className="max-w-[85%] whitespace-pre-wrap rounded-[22px] px-4 py-3 text-[16px] leading-[1.5]"
-        style={{
-          background: mine ? 'var(--color-accent-200)' : 'var(--color-surface)',
-          color: 'var(--color-text)',
-        }}
-      >
-        {children}
-      </p>
+    <div
+      className="max-w-[88%] whitespace-pre-wrap px-[17px] py-[14px] text-[15.5px] leading-[1.5] text-pretty"
+      style={{
+        alignSelf: mine ? 'flex-end' : 'flex-start',
+        background: mine ? 'var(--color-accent)' : 'var(--color-surface)',
+        color: mine ? '#fff' : 'var(--color-text)',
+        borderRadius: mine ? '22px 22px 8px 22px' : '22px 22px 22px 8px',
+      }}
+    >
+      {children}
     </div>
   )
 }
 
-/** Kind first, then confidence — the order the read-back depends on. */
-function toRow(movement: ProposedMovement): ReadBackRow {
+/**
+ * The machinery, inline. Sage rule, a status dot, and farm language — no JSON,
+ * no ids, no "200 OK". Negative margin pulls it in tight against the bubbles so
+ * it reads as part of the conversation rather than an aside.
+ */
+function Step({ type }: { type: string }) {
+  const { label, detail, tone } = describe(type)
+
+  return (
+    <div
+      className="flex items-start gap-[9px] self-stretch py-[1px] pl-[14px]"
+      style={{ borderLeft: '2px solid var(--color-accent-2-300)', margin: '-8px 0' }}
+    >
+      <span
+        className="mt-[6px] h-[7px] w-[7px] flex-none"
+        style={{
+          background: tone === 'warn' ? 'var(--color-accent-500, #d67f48)' : '#8fa073',
+          borderRadius: tone === 'fail' ? 2 : 999,
+        }}
+      />
+      <div className="flex flex-col gap-[1px]">
+        <span
+          className="meta text-[11px] font-semibold leading-[1.3] tracking-[.04em]"
+          style={{ color: 'var(--color-accent-2-700)' }}
+        >
+          {label}
+        </span>
+        <span
+          className="text-[12px] leading-[1.45]"
+          style={{ color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}
+        >
+          {detail}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function describe(type: string): { label: string; detail: string; tone: 'ok' | 'warn' | 'fail' } {
+  if (type === 'thinking') {
+    return { label: 'READING WHAT YOU WROTE', detail: 'one moment', tone: 'ok' }
+  }
+  if (type.includes('getCurrentStock')) {
+    return { label: 'WHAT YOU ALREADY HAVE', detail: 'looked at your book first', tone: 'ok' }
+  }
+  if (type.includes('resolveProducts')) {
+    return { label: 'MATCHED IT TO YOUR CROPS', detail: 'using your words for them', tone: 'ok' }
+  }
+  if (type.includes('proposeMovements')) {
+    return { label: 'WROTE UP WHAT I HEARD', detail: 'nothing published yet', tone: 'ok' }
+  }
+  return { label: type, detail: '', tone: 'warn' }
+}
+
+/**
+ * The read-back. The publish question sits inside the card so the rows and the
+ * thing he is agreeing to cannot be separated.
+ */
+function ReadBackCard({
+  movements,
+  done,
+  pending,
+  onEdit,
+  onPublish,
+  onFix,
+}: {
+  movements: ProposedMovement[]
+  done: boolean
+  pending: boolean
+  onEdit: (index: number) => void
+  onPublish: () => void
+  onFix: () => void
+}) {
+  return (
+    <div
+      className="self-stretch overflow-hidden rounded-[24px]"
+      style={{ background: 'var(--color-neutral-100)', boxShadow: 'var(--shadow-md)' }}
+    >
+      {movements.map((movement, index) => (
+        <Row
+          key={`${movement.product}-${index}`}
+          movement={movement}
+          onEdit={done ? undefined : () => onEdit(index)}
+        />
+      ))}
+
+      <div className="flex flex-col gap-[13px] px-[18px] pb-[19px] pt-[17px]">
+        {done ? (
+          <span
+            className="meta text-[12.5px] leading-[1.5]"
+            style={{ color: 'var(--color-accent-2-700)' }}
+          >
+            It&rsquo;s up. Everything here expires, so it comes down on its own.
+          </span>
+        ) : (
+          <>
+            <span className="text-[16px] leading-[1.35]" style={{ fontFamily: 'var(--font-caprasimo)' }}>
+              Sound right?
+            </span>
+            <div className="flex gap-[10px]">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={onPublish}
+                className="btn btn-primary flex-1"
+                style={{ fontSize: 15.5, padding: '15px 18px' }}
+              >
+                Put it up
+              </button>
+              <button
+                type="button"
+                onClick={onFix}
+                className="btn btn-secondary"
+                style={{ fontSize: 15.5, padding: '15px 18px' }}
+              >
+                Fix something
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Row({
+  movement,
+  onEdit,
+}: {
+  movement: ProposedMovement
+  onEdit?: () => void
+}) {
+  const soldOut = movement.kind === 'trueup' && movement.amountValue === 0
   const kindWord =
     movement.kind === 'trueup'
       ? 'total'
@@ -208,24 +316,16 @@ function toRow(movement: ProposedMovement): ReadBackRow {
           ? 'sold'
           : 'spoiled'
 
-  const soldOut = movement.kind === 'trueup' && movement.amountValue === 0
-
+  // Formatted the same way the ledger will format it once committed, so the
+  // read-back and the stock page can never word the same figure differently.
   const figure = soldOut
     ? 'none left'
     : movement.amountValue === null
       ? 'available'
-      : `${movement.measured ? '' : '~'}${movement.amountValue}${
-          movement.amountUnit ? ` ${movement.amountUnit}` : ''
-        }`
-
-  const chip =
-    movement.kind === 'add'
-      ? ('added' as const)
-      : movement.kind === 'remove'
-        ? ('sold' as const)
-        : movement.kind === 'spoil'
-          ? ('spoiled' as const)
-          : undefined
+      : `${movement.measured ? '' : '~'}${formatAmount({
+          value: movement.amountValue,
+          unit: movement.amountUnit?.trim() || COUNT_UNIT,
+        })}`
 
   const meta = movement.forecast
     ? `not yet · ready ${movement.windowFrom ?? 'later'}`
@@ -235,24 +335,49 @@ function toRow(movement: ProposedMovement): ReadBackRow {
         ? `${kindWord} · no amount, and that's fine`
         : `${kindWord} · ${movement.measured ? 'weighed' : 'estimated'}`
 
-  return {
-    product: movement.product,
-    figure,
-    ...(chip ? { chip } : {}),
-    tone: movement.forecast
-      ? 'forecast'
-      : soldOut
-        ? 'spent'
-        : movement.amountValue === null
-          ? 'available'
-          : 'normal',
-    meta,
-  }
-}
+  const figureColour = movement.forecast
+    ? 'var(--color-accent-2-700)'
+    : soldOut
+      ? 'color-mix(in srgb, var(--color-text) 45%, transparent)'
+      : movement.amountValue === null
+        ? 'var(--color-accent-2-700)'
+        : 'var(--color-text)'
 
-function narrate(type: string): string {
-  if (type.includes('getCurrentStock')) return 'looked at what you already have'
-  if (type.includes('resolveProducts')) return 'matched it to your crops'
-  if (type.includes('proposeMovements')) return 'wrote up what I heard'
-  return type
+  return (
+    <div
+      className="flex flex-col gap-[5px] px-[18px] py-[15px]"
+      style={{
+        borderBottom: '1px solid color-mix(in srgb, var(--color-text) 10%, transparent)',
+        // A forecast never enters the black-ink column where current stock lives.
+        borderLeft: movement.forecast ? '4px solid var(--color-accent-2-300)' : undefined,
+      }}
+    >
+      <div className="flex items-baseline gap-3">
+        <span className="flex-1 text-[16.5px] font-semibold capitalize leading-[1.25]">
+          {movement.product}
+        </span>
+        <span className="tnum text-[16.5px] leading-[1.25]" style={{ color: figureColour }}>
+          {figure}
+        </span>
+      </div>
+      <div className="flex items-center gap-[10px]">
+        <span
+          className="meta flex-1 text-[12.5px] leading-[1.4]"
+          style={{ color: 'color-mix(in srgb, var(--color-text) 62%, transparent)' }}
+        >
+          {meta}
+        </span>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="btn btn-ghost"
+            style={{ fontSize: 12.5, padding: '8px 14px' }}
+          >
+            edit
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }

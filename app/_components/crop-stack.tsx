@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatUnit } from '@/lib/ledger'
 import type { InventoryRow } from '@/lib/projections'
 
 /**
@@ -58,9 +59,9 @@ export function CropStack({ rows }: { rows: InventoryRow[] }) {
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-[14px] px-[18px] pb-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-[14px] px-[18px] pb-2">
         <div
-          className="flex flex-1 flex-col rounded-[34px] px-[26px] py-[30px]"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[34px] px-[26px] py-[30px]"
           style={{ background: 'var(--color-bg)', boxShadow: '0 12px 32px rgba(0,0,0,.35)' }}
         >
           <span
@@ -89,7 +90,7 @@ export function CropStack({ rows }: { rows: InventoryRow[] }) {
                 className="text-[22px] leading-none"
                 style={{ color: 'color-mix(in srgb, var(--color-text) 60%, transparent)' }}
               >
-                {row.quantity.unit}
+                {formatUnit(row.quantity.unit)}
               </span>
             )}
           </div>

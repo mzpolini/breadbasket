@@ -41,12 +41,13 @@ export function EditSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center"
       style={{ background: 'color-mix(in srgb, var(--color-neutral-900) 50%, transparent)' }}
       onClick={onClose}
     >
+      {/* Rises from the bottom of the phone frame, and never taller than it. */}
       <div
-        className="w-full max-w-[460px] rounded-t-[28px] p-6 sm:rounded-[28px]"
+        className="max-h-[88dvh] w-full max-w-[430px] overflow-y-auto rounded-t-[28px] p-6"
         style={{ background: 'var(--color-bg)', boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}
       >

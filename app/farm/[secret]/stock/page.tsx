@@ -1,20 +1,20 @@
 import Link from 'next/link'
-import { CropStack } from '@/app/_components/crop-stack'
+import { StockView } from '@/app/_components/stock-view'
 import { balancesFrom } from '@/lib/ledger'
 import { farmerInventory } from '@/lib/projections'
 import { SEED_FARM_ID, SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '@/lib/seed'
 import { movementsForFarm } from '@/lib/storage/movements'
 
 /**
- * Surface 2 — his own stock, design direction `1f`.
+ * Surface 2 — his own stock.
  *
- * One crop, one card, one thumb, ordered so what needs him comes first. Dark
- * ground because it gets used at dusk with a torch in the other hand — which is
- * why the shell's bar is dark too, so the two meet rather than clash.
+ * Two views of one projection: the comprehensive list he lands on, and the `1f`
+ * walkthrough for the pre-market pass. Both read the same `farmerInventory`
+ * rows, so they can never disagree about what he has.
  *
- * A pass rather than a browse: the footer counts down and then it goes up. This
- * only has something to walk through once he has talked to the agent, because
- * everything here is derived from what he said.
+ * This only has something to show once he has talked to the agent, because
+ * everything here is derived from what he said — there is no separate inventory
+ * to edit, and that is the design.
  */
 export default async function FarmerStockPage({
   params,
@@ -33,30 +33,29 @@ export default async function FarmerStockPage({
     { now },
   )
 
+  if (rows.length === 0) {
+    return (
+      <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+        <span className="text-[26px]" style={{ fontFamily: 'var(--font-caprasimo)' }}>
+          Nothing here yet.
+        </span>
+        <span
+          className="text-[15px] leading-[1.6]"
+          style={{ color: 'color-mix(in srgb, var(--color-text) 65%, transparent)' }}
+        >
+          This only knows what you&rsquo;ve told it. Have a word with it first and your
+          crops will show up here.
+        </span>
+        <Link href={`/farm/${secret}`} className="btn btn-primary mt-2">
+          Tell it what you&rsquo;ve got
+        </Link>
+      </main>
+    )
+  }
+
   return (
-    <main
-      className="mx-auto flex w-full max-w-[560px] flex-1 flex-col"
-      style={{ background: 'var(--color-neutral-900)' }}
-    >
-      {rows.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
-          <span
-            className="text-[26px]"
-            style={{ fontFamily: 'var(--font-caprasimo)', color: 'var(--color-bg)' }}
-          >
-            Nothing here yet.
-          </span>
-          <span className="text-[15px]" style={{ color: 'rgba(245,234,216,.6)' }}>
-            This only knows what you&rsquo;ve told it. Have a word with it first and your
-            crops will show up here.
-          </span>
-          <Link href={`/farm/${secret}`} className="btn btn-primary mt-2">
-            Tell it what you&rsquo;ve got
-          </Link>
-        </div>
-      ) : (
-        <CropStack rows={rows} />
-      )}
+    <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <StockView rows={rows} now={now} />
     </main>
   )
 }

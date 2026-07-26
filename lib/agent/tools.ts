@@ -1,6 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { balancesFrom } from '../ledger'
+import { balancesFrom, formatAmount } from '../ledger'
 import { farmerInventory } from '../projections'
 import { SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '../seed'
 import { movementsForFarm } from '../storage/movements'
@@ -83,7 +83,7 @@ export function farmTools(farmId: string) {
         return {
           crops: rows.map((row) => ({
             product: row.product,
-            amount: row.quantity ? `${row.quantity.value} ${row.quantity.unit}` : 'some',
+            amount: row.quantity ? formatAmount(row.quantity) : 'some',
             confidence: row.confidence,
             live: row.live,
             needsAttention: row.attention,

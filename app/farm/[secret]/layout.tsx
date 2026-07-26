@@ -4,7 +4,12 @@ import { FarmNav } from '@/app/_components/farm-nav'
 import { SEED_FARM_SECRET } from '@/lib/seed'
 
 /**
- * The farmer's shell.
+ * The farmer's shell — one phone-shaped frame that every surface lives inside.
+ *
+ * The frame owns the height and the overflow, which is what fixes the "page
+ * islands" problem: the header is painted once here and never remounts on
+ * navigation, and each page scrolls *within* the frame rather than scrolling the
+ * document out from under it.
  *
  * The secret is checked once here rather than in each page — it is the whole of
  * v0.1 identity, so it belongs at the boundary rather than repeated behind it.
@@ -23,11 +28,11 @@ export default async function FarmLayout({
   if (secret !== SEED_FARM_SECRET) notFound()
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <Suspense fallback={<div className="h-[52px]" style={{ background: 'var(--color-neutral-900)' }} />}>
+    <div className="phone">
+      <Suspense fallback={<div className="h-[102px] flex-none" />}>
         <FarmNav secret={secret} />
       </Suspense>
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>
   )
 }

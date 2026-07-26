@@ -33,6 +33,14 @@
   --color-accent-2-700: #56633f;
   --color-accent-2-800: #3d472b;
 
+  /*
+   * `--font-figtree` and `--font-caprasimo` come from next/font in the root
+   * layout — deliberately not redefined here, or the self-hosted faces would be
+   * shadowed by a plain family name and silently fall back to a system font.
+   */
+  --font-body: var(--font-figtree), system-ui, sans-serif;
+  --font-meta: ui-monospace, Menlo, monospace;
+
   --shadow-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
   --shadow-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
   --shadow-lg: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
@@ -41,13 +49,13 @@
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: "Figtree", system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.55;
 }
 
 h1, h2, h3, h4 {
-  font-family: "Caprasimo", system-ui, sans-serif;
+  font-family: var(--font-caprasimo);
   font-weight: 400;
   line-height: 1.12;
   letter-spacing: -0.015em;
@@ -61,7 +69,7 @@ h1, h2, h3, h4 {
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   cursor: pointer; text-decoration: none;
-  font-family: "Caprasimo", system-ui, sans-serif; font-weight: 400;
+  font-family: var(--font-caprasimo); font-weight: 400;
   font-size: 14px; line-height: 1.2; color: var(--color-text);
   background: transparent; border: 1px solid transparent;
   padding: 8.8px 15.8px; border-radius: 999px;
@@ -84,4 +92,25 @@ h1, h2, h3, h4 {
 .tnum { font-variant-numeric: tabular-nums; }
 
 /* The machinery voice — meta lines are mono, per the design. */
-.meta { font-family: ui-monospace, Menlo, monospace; }
+.meta { font-family: var(--font-meta); }
+
+/*
+ * This is a phone app. v0.1 is only ever used one-handed at the farm, so rather
+ * than inventing a desktop layout nobody asked for, the whole app is a fixed
+ * phone-width column centred on wider screens — the same surface, not a
+ * different one. `dvh` because mobile browser chrome moves.
+ */
+.phone {
+  width: 100%;
+  max-width: 430px;
+  margin-inline: auto;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+@media (min-width: 431px) {
+  body { background: var(--color-neutral-300); }
+  .phone { box-shadow: var(--shadow-lg); }
+}

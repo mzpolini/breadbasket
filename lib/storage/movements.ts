@@ -1,7 +1,13 @@
 import { asc, eq } from 'drizzle-orm'
 import { getDb } from '../db'
 import { movements, type MovementRow } from '../db/schema'
-import type { Movement, MovementKind, MovementSource, MovementState } from '../ledger/types'
+import {
+  COUNT_UNIT,
+  type Movement,
+  type MovementKind,
+  type MovementSource,
+  type MovementState,
+} from '../ledger/types'
 
 /**
  * The only way movements reach or leave storage.
@@ -19,8 +25,11 @@ export function toMovement(row: MovementRow): Movement {
     product: row.product,
     ...(row.rawPhrase ? { rawPhrase: row.rawPhrase } : {}),
     kind: row.kind as MovementKind,
-    ...(row.amountValue !== null && row.amountUnit !== null
-      ? { amount: { value: row.amountValue, unit: row.amountUnit } }
+    // Keyed off the *value* alone. A row with a number and no unit is a bare
+    // count, not a corrupt row — requiring the pair is how the number used to
+    // get thrown away on the way back out.
+    ...(row.amountValue !== null
+      ? { amount: { value: row.amountValue, unit: row.amountUnit ?? COUNT_UNIT } }
       : {}),
     measured: row.measured,
     ...(row.windowFrom && row.windowTo

@@ -25,6 +25,17 @@ export type MovementSource = 'farmer' | 'order'
  */
 export type Unit = string
 
+/**
+ * The unit of a bare count — "thirty tomatoes", "a dozen watermelons". He named
+ * a number and no unit, because the crop *is* the unit.
+ *
+ * It is a real unit rather than `null` so that everything downstream keeps
+ * working unchanged: counts still fold, and a count still conflicts with a
+ * weight, which is correct — nobody can add 30 tomatoes to 5 lb of tomatoes.
+ * Display is the only place that treats it specially, by printing nothing.
+ */
+export const COUNT_UNIT = 'count'
+
 export type Amount = {
   value: number
   unit: Unit

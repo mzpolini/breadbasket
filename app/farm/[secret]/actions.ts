@@ -1,8 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { toMovements } from '@/lib/agent/commit'
 import type { ProposedMovement } from '@/lib/agent/tools'
-import type { Movement } from '@/lib/ledger'
 import { SEED_FARM_ID } from '@/lib/seed'
 import { appendMovements } from '@/lib/storage/movements'
 import { teach } from '@/lib/storage/vocabulary'
@@ -16,28 +16,14 @@ import { teach } from '@/lib/storage/vocabulary'
  * The model proposes; this runs when he taps.
  */
 export async function commitProposed(proposed: ProposedMovement[]) {
-  const sessionId = crypto.randomUUID()
-  const occurredAt = new Date().toISOString()
-
-  const movements: Movement[] = proposed.map((item) => ({
-    id: crypto.randomUUID(),
+  // The conversion itself lives in `lib/agent/commit` so it can be tested
+  // without a database — it is the one place a dropped field is silent.
+  const movements = toMovements(proposed, {
     farmId: SEED_FARM_ID,
-    product: item.product.toLowerCase().trim(),
-    rawPhrase: item.rawPhrase,
-    kind: item.kind,
-    ...(item.amountValue !== null && item.amountUnit !== null
-      ? { amount: { value: item.amountValue, unit: item.amountUnit } }
-      : {}),
-    // A claim with no number cannot have been measured, whatever the model said.
-    measured: item.amountValue === null ? false : item.measured,
-    ...(item.forecast && item.windowFrom && item.windowTo
-      ? { window: { from: item.windowFrom, to: item.windowTo } }
-      : {}),
-    state: item.forecast ? 'forecast' : 'confirmed',
-    source: 'farmer',
-    sessionId,
-    occurredAt,
-  }))
+    sessionId: crypto.randomUUID(),
+    occurredAt: new Date().toISOString(),
+    newId: () => crypto.randomUUID(),
+  })
 
   await appendMovements(movements)
 

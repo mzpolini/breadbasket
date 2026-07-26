@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Movement } from '../ledger'
+import { COUNT_UNIT, type Movement } from '../ledger'
 import { toMovement, toRow } from './movements'
 
 /**
@@ -46,6 +46,18 @@ describe('storage round trip', () => {
 
     expect(back).toEqual(presenceOnly)
     expect('amount' in back).toBe(false)
+  })
+
+  it('reads a row with a number but no unit back as a bare count', () => {
+    // Rows like this exist from before counts had a unit. The number is the
+    // thing he said — losing it silently is worse than any wrong unit label.
+    const back = toMovement({
+      ...toRow(full),
+      amountValue: 12,
+      amountUnit: null,
+    })
+
+    expect(back.amount).toEqual({ value: 12, unit: COUNT_UNIT })
   })
 
   it('does not invent a window for current stock', () => {
