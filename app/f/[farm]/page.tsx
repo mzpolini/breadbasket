@@ -6,12 +6,8 @@ import {
   publicListings,
   type PublicListing,
 } from '@/lib/projections'
-import {
-  SEED_FARM_ID,
-  SEED_FRESHNESS,
-  SEED_FRESHNESS_DEFAULT,
-  seedMovements,
-} from '@/lib/seed'
+import { SEED_FARM_ID, SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '@/lib/seed'
+import { movementsForFarm } from '@/lib/storage/movements'
 
 /**
  * Surface 3 — the public availability page (design `1g`).
@@ -30,7 +26,7 @@ export default async function FarmAvailabilityPage({
   if (farm !== SEED_FARM_ID) notFound()
 
   const now = new Date()
-  const balances = balancesFrom(seedMovements(now), {
+  const balances = balancesFrom(await movementsForFarm(SEED_FARM_ID), {
     now,
     freshnessDays: SEED_FRESHNESS_DEFAULT,
     freshnessByProduct: SEED_FRESHNESS,

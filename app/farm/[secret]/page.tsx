@@ -3,11 +3,12 @@ import { CropStack } from '@/app/_components/crop-stack'
 import { balancesFrom } from '@/lib/ledger'
 import { farmerInventory } from '@/lib/projections'
 import {
+  SEED_FARM_ID,
   SEED_FARM_SECRET,
   SEED_FRESHNESS,
   SEED_FRESHNESS_DEFAULT,
-  seedMovements,
 } from '@/lib/seed'
+import { movementsForFarm } from '@/lib/storage/movements'
 
 /**
  * Surface 2 — the farmer's own view, design direction `1f`.
@@ -28,7 +29,7 @@ export default async function FarmerInventoryPage({
 
   const now = new Date()
   const rows = farmerInventory(
-    balancesFrom(seedMovements(now), {
+    balancesFrom(await movementsForFarm(SEED_FARM_ID), {
       now,
       freshnessDays: SEED_FRESHNESS_DEFAULT,
       freshnessByProduct: SEED_FRESHNESS,
