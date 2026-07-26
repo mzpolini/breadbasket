@@ -93,6 +93,23 @@ describe('publicListings', () => {
     ).toEqual([])
   })
 
+  it('withholds a position that has run out', () => {
+    // "0 lb of squash" is not an offer. Sold out is honest and expected —
+    // unlike a negative, which is a data error — but neither belongs on a page
+    // whose promise is that what is listed is actually available.
+    expect(
+      listings([
+        movement({ id: 'm1', amount: { value: 20, unit: 'lb' } }),
+        movement({
+          id: 'm2',
+          kind: 'remove',
+          amount: { value: 20, unit: 'lb' },
+          occurredAt: '2026-08-02T09:00:00Z',
+        }),
+      ]),
+    ).toEqual([])
+  })
+
   it('reports weeks since the figure was last actually measured', () => {
     // Weighed three weeks ago, re-confirmed by eye today: still live, but the
     // annotation should say how stale the measurement is.

@@ -42,8 +42,9 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000
  * - a **unit conflict** publishes as "available" rather than being hidden. He
  *   definitely has tomatoes; we just cannot say how many, and saying "available"
  *   is not a lie while hiding real food helps nobody
- * - a **negative** position is withheld. It means a movement is missing, so we
- *   do not know what is there, and there is no honest claim to make
+ * - a position at **zero or below** is withheld. Sold out is honest and expected;
+ *   negative means a movement is missing so we do not know what is there. Neither
+ *   is an offer
  */
 export function publicListings(
   balances: ProductBalance[],
@@ -53,7 +54,9 @@ export function publicListings(
     // `live` already implies a confirmation, but narrowing on it beats a cast:
     // a cast would hide the day someone changes what `live` means.
     if (!balance.live || balance.confirmedAt === null) return []
-    if (balance.status === 'known' && balance.quantity < 0) return []
+    // Sold out is honest; negative is a data error. Neither is an offer, and
+    // neither belongs on a page that promises what is listed is available.
+    if (balance.status === 'known' && balance.quantity <= 0) return []
 
     const quantity =
       balance.status === 'known' ? { value: balance.quantity, unit: balance.unit } : null

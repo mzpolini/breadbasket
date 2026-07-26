@@ -339,3 +339,27 @@ describe('balancesFrom', () => {
     expect(balances).toHaveLength(2)
   })
 })
+
+describe('per-product freshness', () => {
+  it('gives each product its own window', () => {
+    // Salad greens go in days; winter squash sits for months. Both confirmed on
+    // the 1st, looked at on the 5th — the greens should be gone, the squash not.
+    const balances = balancesFrom(
+      [
+        movement({ id: 'm1', product: 'greens', amount: { value: 10, unit: 'bunch' } }),
+        movement({ id: 'm2', product: 'squash', amount: { value: 10, unit: 'lb' } }),
+      ],
+      {
+        now: new Date('2026-08-05T09:00:00Z'),
+        freshnessDays: 30,
+        freshnessByProduct: { greens: 2 },
+      },
+    )
+
+    const live = (product: string) =>
+      balances.find((entry) => entry.product === product)?.balance.live
+
+    expect(live('greens')).toBe(false)
+    expect(live('squash')).toBe(true)
+  })
+})
