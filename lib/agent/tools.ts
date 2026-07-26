@@ -4,6 +4,8 @@ import { balancesFrom } from '../ledger'
 import { farmerInventory } from '../projections'
 import { SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '../seed'
 import { movementsForFarm } from '../storage/movements'
+import { vocabularyFor } from '../storage/vocabulary'
+import { resolve } from '../vocabulary'
 
 /**
  * The agent's tool surface.
@@ -24,6 +26,12 @@ import { movementsForFarm } from '../storage/movements'
 /** Flat by necessity — schema compliance degrades past a few levels of nesting. */
 export const proposedMovementSchema = z.object({
   product: z.string().describe('The crop, normalised to his own vocabulary where known'),
+  heardAs: z
+    .string()
+    .describe(
+      'The crop word he actually used, verbatim — "greens", "maters". If he ' +
+        'corrects the product, this is what gets taught as meaning it.',
+    ),
   rawPhrase: z.string().describe('What he actually said for this crop, verbatim'),
   kind: z
     .enum(['add', 'remove', 'spoil', 'trueup'])
@@ -86,23 +94,32 @@ export function farmTools(farmId: string) {
 
     resolveProducts: tool({
       description:
-        "Match the words he used to crops already known for this farm. There is no " +
-        'canonical produce list — his vocabulary accretes from use, so an unknown ' +
-        'term is a new crop rather than an error.',
+        "Match the words he used to crops this farm already knows. There is no " +
+        'canonical produce list — his vocabulary accretes from his own corrections, ' +
+        'so an unknown term is a new crop rather than an error. Use the product it ' +
+        'returns, not his word, when it comes back known.',
       inputSchema: z.object({
         terms: z.array(z.string()).describe('The crop words he used, verbatim'),
       }),
       execute: async ({ terms }) => {
-        const known = new Set(
+        const vocab = await vocabularyFor(farmId)
+        // Anything already in the ledger counts as known too, even if he has
+        // never had to correct it.
+        const inLedger = new Set(
           (await movementsForFarm(farmId)).map((movement) => movement.product.toLowerCase()),
         )
 
         return {
-          resolved: terms.map((term) => ({
-            term,
-            product: term,
-            known: known.has(term.trim().toLowerCase()),
-          })),
+          resolved: terms.map((term) => {
+            const resolution = resolve(vocab, term)
+            return {
+              term,
+              product: resolution.product,
+              known: resolution.known || inLedger.has(term.trim().toLowerCase()),
+              /** True when this is his own taught word rather than a plain match. */
+              learned: resolution.known,
+            }
+          }),
         }
       },
     }),

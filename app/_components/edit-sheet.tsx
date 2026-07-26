@@ -36,7 +36,8 @@ export function EditSheet({
   const changed =
     draft.kind !== movement.kind ||
     draft.amountValue !== movement.amountValue ||
-    draft.measured !== movement.measured
+    draft.measured !== movement.measured ||
+    draft.product !== movement.product
 
   return (
     <div
@@ -49,13 +50,28 @@ export function EditSheet({
         style={{ background: 'var(--color-bg)', boxShadow: 'var(--shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-[22px] capitalize">{movement.product}</h2>
+        <input
+          value={draft.product}
+          onChange={(e) => setDraft({ ...draft, product: e.target.value })}
+          aria-label="crop"
+          className="w-full rounded-[16px] px-3 py-2 text-[22px] capitalize"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-divider)' }}
+        />
         <p
-          className="meta mt-1 text-[12.5px]"
+          className="meta mt-2 text-[12.5px]"
           style={{ color: 'color-mix(in srgb, var(--color-text) 55%, transparent)' }}
         >
           you said &ldquo;{movement.rawPhrase}&rdquo;
         </p>
+        {draft.product.trim().toLowerCase() !== movement.heardAs.trim().toLowerCase() && (
+          <p
+            className="mt-2 text-[13px] leading-[1.5]"
+            style={{ color: 'var(--color-accent-2-700)' }}
+          >
+            I&rsquo;ll remember that &ldquo;{movement.heardAs}&rdquo; means{' '}
+            {draft.product.trim() || '…'} on your farm.
+          </p>
+        )}
 
         {movement.kind === 'trueup' && (
           <p

@@ -1,4 +1,12 @@
-import { boolean, doublePrecision, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  doublePrecision,
+  index,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core'
 
 /**
  * Movements — the only source of truth.
@@ -79,3 +87,29 @@ export const movements = pgTable(
 
 export type MovementRow = typeof movements.$inferSelect
 export type NewMovementRow = typeof movements.$inferInsert
+
+/**
+ * A farm's private language — his word for a crop, and what it means.
+ *
+ * There is no canonical produce taxonomy and no setup step. This accretes from
+ * corrections: he says "greens", the read-back shows the wrong greens, he fixes
+ * it, and the mapping is learned. That correction *is* the onboarding.
+ *
+ * Scoped per farm because one farmer's "greens" is another's mustard. Keyed on
+ * the normalised term so it survives ragged input — speech-to-text and thumbs
+ * on a phone both produce it.
+ */
+export const vocabulary = pgTable(
+  'vocabulary',
+  {
+    farmId: text('farm_id').notNull(),
+    /** Normalised: trimmed and lowercased. */
+    term: text('term').notNull(),
+    product: text('product').notNull(),
+    /** Last write wins — the most recent correction is the one he meant. */
+    learnedAt: timestamp('learned_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.farmId, table.term] })],
+)
+
+export type VocabularyRow = typeof vocabulary.$inferSelect
