@@ -44,7 +44,13 @@ export type Movement = {
   /** What the farmer actually said, kept so normalisation stays auditable. */
   rawPhrase?: string
   kind: MovementKind
-  amount: Amount
+  /**
+   * Optional on purpose. "I've got collards" is ordinary speech and a valid
+   * claim — forcing a number would interrogate him on the most natural sentence
+   * in the language. A movement without an amount asserts presence and refreshes
+   * confirmation; it does not alter the figure.
+   */
+  amount?: Amount
   /** true = weighed or counted; false = estimated. Drives estimate debt. */
   measured: boolean
   window: Window
@@ -96,7 +102,16 @@ export type UnitConflict = Estimated & {
 }
 
 /**
+ * He has some and never said how many. Live, expiring, and annotatable like any
+ * other position — just without a figure. A buyer driving out for collards
+ * mostly needs to know there are collards.
+ */
+export type PresentBalance = Estimated & {
+  status: 'present'
+}
+
+/**
  * A union on purpose. Callers must narrow on `status`, so no code path can read
  * a quantity that was never computable.
  */
-export type Balance = KnownBalance | UnitConflict
+export type Balance = KnownBalance | UnitConflict | PresentBalance
