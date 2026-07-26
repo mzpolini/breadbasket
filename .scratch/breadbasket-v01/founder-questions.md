@@ -59,6 +59,10 @@ These encode how farming actually works. A developer can't reason their way to t
 - **"100 confirmed, 200 unconfirmed."** 300 total, or a 200 forecast of which 100 are now confirmed? If he forecast 200 and confirms 100, is the other 100 still unconfirmed or superseded?
 - **How wrong is too wrong?** System says 50lbs, there are 40 — has it lied? What size of error makes a buyer stop trusting it? This sets how precise quantity has to be, which is otherwise an arbitrary engineering choice.
 
+**Since the design came back:** question 5 is answered — the designer chose **"Sound right?"** with a **"Put it up"** button. Ask him only if he'd say it differently.
+
+**One new question, and it overrides what we'd have asked on freshness.** The designer argues for a **flat 7-day window** rather than per-crop: published Saturday, lapses the following Saturday, the same rhythm as the notebook — so *lapsed* always means "you haven't talked to me since last market". That's simpler and more explainable than per-crop windows, at the cost of being less honest about the food (greens really do go faster than squash). **Which does he want?** Both are already supported in code; this is a judgement about what he'd rather explain to a buyer.
+
 ## 5. What's your word for putting it up?
 
 *(from [The check-in conversation](issues/07-check-in-conversation.md) — ten seconds, and unguessable from here)*
