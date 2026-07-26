@@ -73,6 +73,32 @@ export function publicListings(
   })
 }
 
+export type ForecastListing = {
+  product: string
+  quantity: Quantity | null
+  window: Window
+}
+
+/**
+ * What is coming, shown apart from what is here. A forecast is never live, so
+ * `publicListings` correctly drops it — but a buyer planning a week ahead wants
+ * to see it, provided it can never be mistaken for stock on hand.
+ */
+export function forecastListings(balances: ProductBalance[]): ForecastListing[] {
+  return balances.flatMap(({ product, window, balance }) => {
+    if (!window || balance.live) return []
+
+    return [
+      {
+        product,
+        quantity:
+          balance.status === 'known' ? { value: balance.quantity, unit: balance.unit } : null,
+        window,
+      },
+    ]
+  })
+}
+
 /** Something he should look at. Never shown to a buyer. */
 export type Attention = 'unit-conflict' | 'negative' | 'needs-weighing'
 

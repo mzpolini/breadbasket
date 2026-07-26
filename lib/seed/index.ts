@@ -14,6 +14,19 @@ import type { Movement } from '../ledger'
 
 export const SEED_FARM_ID = 'seed-farm'
 
+/**
+ * The public page cannot render without this, and there is no farm-profile
+ * model yet — noted as a gap when the design came back. Placeholder shape.
+ */
+export const SEED_FARM = {
+  id: SEED_FARM_ID,
+  name: 'Mighty Thundercloud',
+  tagline: 'Edible Forest · Maryland',
+  market: 'at the market Saturdays, 8–1',
+  /** Drop a real file here and it renders instead of the initial. */
+  logo: '/brand/logo.png',
+}
+
 /** v0.1 identity: one farm behind one secret URL. No login, nothing to remember. */
 export const SEED_FARM_SECRET = 'seed-farm-preview'
 

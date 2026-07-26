@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
+import { CropStack } from '@/app/_components/crop-stack'
 import { balancesFrom } from '@/lib/ledger'
-import { farmerInventory, type InventoryRow } from '@/lib/projections'
+import { farmerInventory } from '@/lib/projections'
 import {
   SEED_FARM_SECRET,
   SEED_FRESHNESS,
@@ -9,11 +10,13 @@ import {
 } from '@/lib/seed'
 
 /**
- * The farmer's own view — what pilot success is measured on, and what has to
- * beat a paper notebook for getting ready on Saturday.
+ * Surface 2 — the farmer's own view, design direction `1f`.
  *
- * Scaffolding markup, real data flow. Identity is the settled v0.1 model: one
- * farm behind one secret URL, no login and nothing to remember.
+ * The surface pilot success is measured on, and the one competing with a paper
+ * notebook for getting ready on Saturday. Dark ground because it gets used at
+ * dusk with a torch in the other hand.
+ *
+ * Identity is the settled v0.1 model: one farm behind one secret URL, no login.
  */
 export default async function FarmerInventoryPage({
   params,
@@ -33,65 +36,20 @@ export default async function FarmerInventoryPage({
     { now },
   )
 
-  const live = rows.filter((row) => row.live)
-  const notLive = rows.filter((row) => !row.live)
-
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">What you&rsquo;ve got</h1>
+    <main
+      className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col"
+      style={{ background: 'var(--color-neutral-900)' }}
+    >
+      <div
+        className="flex justify-between px-6 pb-2 pt-3 text-[12px] font-semibold"
+        style={{ color: 'rgba(245,234,216,.65)' }}
+      >
+        <span>What you&rsquo;ve got</span>
+        <span className="meta">{rows.length} crops</span>
+      </div>
 
-      <ul className="mt-8 divide-y divide-zinc-200 dark:divide-zinc-800">
-        {live.map((row) => (
-          <Row key={`${row.product}-${row.window?.from ?? "current"}`} row={row} />
-        ))}
-      </ul>
-
-      {notLive.length > 0 && (
-        <>
-          <h2 className="mt-12 text-sm font-medium uppercase tracking-wide text-zinc-500">
-            Not showing publicly
-          </h2>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Lapsed or still to come. Buyers don&rsquo;t see these &mdash; you do, so you
-            can tell sold-out from forgotten.
-          </p>
-          <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-800">
-            {notLive.map((row) => (
-              <Row key={`${row.product}-${row.window?.from ?? "current"}`} row={row} />
-            ))}
-          </ul>
-        </>
-      )}
+      <CropStack rows={rows} />
     </main>
   )
-}
-
-function Row({ row }: { row: InventoryRow }) {
-  return (
-    <li className="py-4">
-      <p className="font-medium capitalize">{row.product}</p>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        {row.quantity ? `${row.quantity.value} ${row.quantity.unit}` : 'available'}
-        {' · '}
-        {row.confidence}
-        {row.weeksSinceMeasured !== null && ` · not weighed in ${row.weeksSinceMeasured}w`}
-      </p>
-      {row.attention && (
-        <p className="mt-1 text-sm text-amber-700 dark:text-amber-500">
-          {attentionLabel(row.attention)}
-        </p>
-      )}
-    </li>
-  )
-}
-
-function attentionLabel(attention: NonNullable<InventoryRow['attention']>): string {
-  switch (attention) {
-    case 'unit-conflict':
-      return 'You gave two different units for this — I can’t work out a total.'
-    case 'negative':
-      return 'This has gone below zero, so something’s missing. Worth a fresh count.'
-    case 'needs-weighing':
-      return 'These have been guesses for a while — worth putting on the scale.'
-  }
 }
