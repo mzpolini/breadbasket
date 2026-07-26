@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "map": "node scripts/map-status.mjs"
   },
   "dependencies": {
     "next": "16.2.11",
