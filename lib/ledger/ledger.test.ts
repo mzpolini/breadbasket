@@ -363,3 +363,50 @@ describe('per-product freshness', () => {
     expect(live('squash')).toBe(true)
   })
 })
+
+describe('current stock is not weekly', () => {
+  it('keeps one position no matter when he says things', () => {
+    // Sunday and the following Thursday are the same tomatoes. Nothing about
+    // current stock is periodic — only a claim about a future demand event is.
+    const balances = balancesFrom(
+      [
+        movement({
+          id: 'm1',
+          window: undefined,
+          kind: 'trueup',
+          amount: { value: 40, unit: 'lb' },
+          occurredAt: '2026-08-02T09:00:00Z',
+        }),
+        movement({
+          id: 'm2',
+          window: undefined,
+          kind: 'add',
+          amount: { value: 10, unit: 'lb' },
+          occurredAt: '2026-08-06T09:00:00Z',
+        }),
+      ],
+      { now: new Date('2026-08-06T12:00:00Z'), freshnessDays: 5 },
+    )
+
+    expect(balances).toHaveLength(1)
+    const [only] = balances
+    expect(only.balance.status === 'known' && only.balance.quantity).toBe(50)
+  })
+
+  it('still separates a claim about a future window', () => {
+    const balances = balancesFrom(
+      [
+        movement({ id: 'm1', window: undefined, amount: { value: 40, unit: 'lb' } }),
+        movement({
+          id: 'm2',
+          state: 'forecast',
+          window: { from: '2026-09-01', to: '2026-09-07' },
+          amount: { value: 300, unit: 'lb' },
+        }),
+      ],
+      AT_NOON,
+    )
+
+    expect(balances).toHaveLength(2)
+  })
+})

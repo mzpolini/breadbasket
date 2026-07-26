@@ -42,7 +42,7 @@ export default async function FarmerInventoryPage({
 
       <ul className="mt-8 divide-y divide-zinc-200 dark:divide-zinc-800">
         {live.map((row) => (
-          <Row key={`${row.product}-${row.window.from}`} row={row} />
+          <Row key={`${row.product}-${row.window?.from ?? "current"}`} row={row} />
         ))}
       </ul>
 
@@ -57,7 +57,7 @@ export default async function FarmerInventoryPage({
           </p>
           <ul className="mt-4 divide-y divide-zinc-200 dark:divide-zinc-800">
             {notLive.map((row) => (
-              <Row key={`${row.product}-${row.window.from}`} row={row} />
+              <Row key={`${row.product}-${row.window?.from ?? "current"}`} row={row} />
             ))}
           </ul>
         </>

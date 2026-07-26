@@ -37,7 +37,8 @@ export function seedMovements(now: Date): Movement[] {
   const at = (daysAgo: number) =>
     new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString()
 
-  const thisWeek = { from: at(3).slice(0, 10), to: at(-4).slice(0, 10) }
+  // Only the forecast needs a window — current stock has none, so everything he
+  // says about it lands in one position however often he says it.
   const nextWeek = { from: at(-5).slice(0, 10), to: at(-11).slice(0, 10) }
 
   let sequence = 0
@@ -46,7 +47,6 @@ export function seedMovements(now: Date): Movement[] {
     farmId: SEED_FARM_ID,
     kind: 'trueup',
     measured: false,
-    window: thisWeek,
     state: 'confirmed',
     source: 'farmer',
     sessionId: 'seed-session',

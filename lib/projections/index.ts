@@ -86,7 +86,8 @@ export type InventoryRow = {
   expiresAt: string | null
   /** Lapsed rows stay in his view; only the public page drops them. */
   live: boolean
-  window: Window
+  /** Absent for current stock; present only for a claim about a future period. */
+  window?: Window
   attention: Attention | null
 }
 

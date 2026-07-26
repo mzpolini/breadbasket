@@ -30,7 +30,14 @@ export type Amount = {
   unit: Unit
 }
 
-/** ISO date strings (`YYYY-MM-DD`), inclusive. */
+/**
+ * The period a claim is about. ISO date strings (`YYYY-MM-DD`), inclusive.
+ *
+ * Only meaningful when there is a demand event to point at — a market day, a
+ * school that needs tomatoes in March. **Current stock has no window**, and
+ * saying so matters: giving today's movements a "this week" window would split
+ * one position in two every time a week boundary rolled past.
+ */
 export type Window = {
   from: string
   to: string
@@ -53,7 +60,8 @@ export type Movement = {
   amount?: Amount
   /** true = weighed or counted; false = estimated. Drives estimate debt. */
   measured: boolean
-  window: Window
+  /** Absent means now — this is stock he has, not a claim about a period. */
+  window?: Window
   state: MovementState
   source: MovementSource
   sessionId: string
