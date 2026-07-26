@@ -1,56 +1,46 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { CropStack } from '@/app/_components/crop-stack'
-import { balancesFrom } from '@/lib/ledger'
-import { farmerInventory } from '@/lib/projections'
-import {
-  SEED_FARM_ID,
-  SEED_FARM_SECRET,
-  SEED_FRESHNESS,
-  SEED_FRESHNESS_DEFAULT,
-} from '@/lib/seed'
-import { movementsForFarm } from '@/lib/storage/movements'
+import { Chat } from '@/app/_components/chat'
+import { SEED_FARM_SECRET } from '@/lib/seed'
 
 /**
- * Surface 2 — the farmer's own view, design direction `1f`.
+ * Surface 1 — the conversation. The product actually happens here; everything
+ * else is downstream of what he says.
  *
- * The surface pilot success is measured on, and the one competing with a paper
- * notebook for getting ready on Saturday. Dark ground because it gets used at
- * dusk with a torch in the other hand.
+ * Identity is the settled v0.1 model: one farm behind one secret URL, no login
+ * and nothing to remember.
  *
- * Identity is the settled v0.1 model: one farm behind one secret URL, no login.
+ * `?v=1` turns on the machinery view — the same surface at higher verbosity
+ * rather than a separate admin panel, so what he sees is what actually happened.
  */
-export default async function FarmerInventoryPage({
+export default async function FarmerChatPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ secret: string }>
+  searchParams: Promise<{ v?: string }>
 }) {
   const { secret } = await params
   if (secret !== SEED_FARM_SECRET) notFound()
 
-  const now = new Date()
-  const rows = farmerInventory(
-    balancesFrom(await movementsForFarm(SEED_FARM_ID), {
-      now,
-      freshnessDays: SEED_FRESHNESS_DEFAULT,
-      freshnessByProduct: SEED_FRESHNESS,
-    }),
-    { now },
-  )
+  const verbose = (await searchParams).v === '1'
 
   return (
-    <main
-      className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col"
-      style={{ background: 'var(--color-neutral-900)' }}
-    >
+    <main className="mx-auto w-full max-w-[560px]">
       <div
-        className="flex justify-between px-6 pb-2 pt-3 text-[12px] font-semibold"
-        style={{ color: 'rgba(245,234,216,.65)' }}
+        className="flex items-baseline gap-3 px-4 pt-4 text-[13px]"
+        style={{ color: 'color-mix(in srgb, var(--color-text) 55%, transparent)' }}
       >
-        <span>What you&rsquo;ve got</span>
-        <span className="meta">{rows.length} crops</span>
+        <span className="meta">BreadBasket</span>
+        <Link href={`/farm/${secret}/stock`} className="ml-auto underline">
+          what you&rsquo;ve got
+        </Link>
+        <Link href={`/farm/${secret}?v=${verbose ? '0' : '1'}`} className="underline">
+          {verbose ? 'less' : 'show your working'}
+        </Link>
       </div>
 
-      <CropStack rows={rows} />
+      <Chat verbose={verbose} />
     </main>
   )
 }
