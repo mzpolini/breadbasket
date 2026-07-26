@@ -248,6 +248,29 @@ describe('foldBalance', () => {
     expect(balance.quantity).toBe(-10)
   })
 
+  it('records when the figure was last actually measured', () => {
+    // The public annotation degrades with time since a real measurement
+    // ("not weighed in 3 weeks"), so the fold has to carry that timestamp.
+    const balance = knownBalance([
+      movement({ id: 'm1', measured: false, occurredAt: '2026-08-01T09:00:00Z' }),
+      movement({
+        id: 'm2',
+        kind: 'trueup',
+        measured: true,
+        amount: { value: 50, unit: 'lb' },
+        occurredAt: '2026-08-02T09:00:00Z',
+      }),
+    ])
+
+    expect(balance.lastMeasuredAt).toBe('2026-08-02T09:00:00Z')
+  })
+
+  it('has never been measured when every movement was a guess', () => {
+    const balance = knownBalance([movement({ measured: false })])
+
+    expect(balance.lastMeasuredAt).toBeNull()
+  })
+
   it('refuses to invent a quantity when units disagree', () => {
     // He said 50 pounds, then sold "2 boxes". These are the same tomatoes counted
     // two ways and there is no conversion — so there is no honest number to publish.

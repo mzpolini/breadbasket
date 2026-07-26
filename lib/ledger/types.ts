@@ -76,6 +76,12 @@ type Estimated = {
   /** Derived: `confirmedAt` plus the product's freshness window. */
   expiresAt: string | null
   /**
+   * When the figure last rested on an actual measurement, or `null` if it never
+   * has. Drives the annotation that degrades over time — "not weighed in 3
+   * weeks" — which is how the system asks for a stocktake without nagging.
+   */
+  lastMeasuredAt: string | null
+  /**
    * Whether this position may still be published. Expiry governs liveness and
    * hides; estimate debt only annotates. Two signals, two jobs.
    */
