@@ -5,6 +5,8 @@ Status: open
 Audience: founder
 Blocked by: —
 
+> **This tunes the parser; it no longer blocks it.** Units accrete conversationally like products, so [The normalisation target shape](06-normalisation-target-shape.md) proceeded without waiting. His answers still improve accuracy and settle conversion, but nothing downstream is held up.
+
 ## Question
 
 How does the founder actually talk about how much of something he has?

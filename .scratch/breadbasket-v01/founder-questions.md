@@ -59,7 +59,16 @@ These encode how farming actually works. A developer can't reason their way to t
 - **"100 confirmed, 200 unconfirmed."** 300 total, or a 200 forecast of which 100 are now confirmed? If he forecast 200 and confirms 100, is the other 100 still unconfirmed or superseded?
 - **How wrong is too wrong?** System says 50lbs, there are 40 — has it lied? What size of error makes a buyer stop trusting it? This sets how precise quantity has to be, which is otherwise an arbitrary engineering choice.
 
-## 5. What would make this worth continuing — and what would make you drop it?
+## 5. What's your word for putting it up?
+
+*(from [The check-in conversation](issues/07-check-in-conversation.md) — ten seconds, and unguessable from here)*
+
+After the agent reads back what it heard, there's a button. We've drafted it as **"Publish this?"** — but *publish* is our word, not a farm word.
+
+- What would he say? *Put it up? Post it? Send it? Make it live?*
+- And when something sells out — *take it down? pull it?*
+
+## 6. What would make this worth continuing — and what would make you drop it?
 
 *(from [What convinces us this works at n=1](issues/12-n-of-1-success.md) — hold this until he has used a working check-in)*
 

@@ -1,9 +1,45 @@
 # The normalisation target shape
 
 Type: grilling
-Status: open
+Status: resolved
 Audience: us
-Blocked by: 02
+Blocked by: —
+
+## Answer
+
+The agent emits **movements** (shape in [The availability record shape](01-availability-record-shape.md)). Three inference defaults settle the hard parts, all chosen so the safe failure is *under*-claiming rather than over-claiming.
+
+### 1. Kind: absolute by default
+
+"I've got 50 pounds of tomatoes" is a **`trueup`** — his total is now 50. An `add` requires explicit increment language: *more, another, picked, harvested, extra*. `remove` and `spoil` are unambiguous in practice (sold, gave away, lost, rotted).
+
+Two reasons. A farmer saying "I've got X" is stating a position, not reporting a transaction — he is telling you what is in the barn. And systemically it keeps drift low: every casual statement of stock *resets* the balance instead of compounding onto it, so estimate debt only grows through events he explicitly reports. Delta-by-default has the opposite property and the number rots faster.
+
+**Accepted cost:** an `add` phrased loosely reads as a reset, silently discarding stock. The mitigation is not in the parser — see the read-back requirement below.
+
+### 2. Measured: false by default
+
+`measured` flips true only on a signal of measurement — *weighed, counted, on the scale*, or a non-round figure like 50.6. A bare "50 pounds" is an **estimate**.
+
+This keeps the estimate-debt mechanism alive: if bare numbers counted as measured, debt would rarely accrue, the stocktake prompt would never fire, and the compounding-drift safeguard would be decorative. Being wrongly nudged to weigh something is a mild annoyance; publishing a remembered figure as a measurement is the failure this product exists to prevent.
+
+### 3. Quantity is optional — presence-only movements exist
+
+"I've got collards" is a valid movement with **no `amount`**. It publishes as *available* with no figure, is unmeasured by definition, accrues estimate debt, and earns a stocktake prompt in time — so the system drifts toward numbers without ever demanding one. Forcing a number would interrogate him on the most natural sentence in the language.
+
+**This requires a ledger change:** `amount` becomes optional on `Movement`, and the fold, both projections, and both views must handle a position that is live and has no number. Not yet implemented — the ledger as committed requires `amount`.
+
+### Falling out of the above
+
+- **The read-back must surface the `kind` prominently and make it one tap to flip.** This is the mitigation for the absolute-by-default cost, and it is a hard requirement on [The chat surface design](20-chat-surface-design.md) rather than a nicety.
+- **The clarifying-question budget is reserved.** Because everything above is guess-and-show-in-the-read-back, the agent should essentially never ask. Reserve the one permitted question for genuine non-comprehension and for a detected unit conflict, where no honest number is computable.
+- **Unknown products simply become products**, named as he said them, confirmed like anything else. Vocabulary accretes; there is no taxonomy to admit them to.
+
+### Left open, deliberately small
+
+Unlearning: if he corrects the same mapping twice in opposing directions, which wins. Not worth deciding before it happens with real transcripts.
+
+> **Unblocked from [Units and quantity](02-units-and-quantity.md).** That ticket was treated as a prerequisite, and it is not one. `Unit` is a bare string and vocabulary accretes conversationally, so **units accrete exactly as products do** — the agent learns "bushel" the first time he says it. What genuinely needs the founder is unit *conversion* (deferred: we surface unit conflicts rather than converting) and the precision threshold (already a parameter). His answer tunes the parser; it does not shape it.
 
 ## The target is now known in outline
 

@@ -3,7 +3,7 @@
 Type: grilling
 Status: open
 Audience: us
-Blocked by: 06
+Blocked by: —
 
 ## Question
 

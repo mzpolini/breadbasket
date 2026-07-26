@@ -14,6 +14,7 @@ Blocked by: —
 The public view is in v0.1 as a dev URL the founder is pointed at for testing, showing one seed farm. Location is constant, so there is no distance or discovery to solve.
 
 - What does the page show? Current live items, quantities, when each was last confirmed?
+- **The annotation must degrade as estimate debt grows** — `estimated` becoming `estimated · not weighed in 3 weeks`. Settled by [The check-in conversation](07-check-in-conversation.md) as the answer to the stocktake-prompt problem: rather than nagging him, the cost of not weighing shows up where buyers see it. This view is therefore load-bearing for a farmer-facing mechanism, not just a buyer-facing one.
 - **The annotation is settled in substance, not in form.** [The availability record shape](01-availability-record-shape.md) decided that expiry hides and confidence annotates: a buyer sees whether a figure was *weighed* or *estimated*, and never sees a lapsed item. How that reads on the page is this ticket's job — `50.6 lb · weighed` vs `~25 lb · estimated` is a sketch, not a design, and "estimated" must not read as "unreliable".
 - How is **freshness made visible**? "Confirmed today" is the whole product promise — does it earn a prominent place, or is silent hiding enough?
 - What does an item **about to lapse** look like, if anything?
