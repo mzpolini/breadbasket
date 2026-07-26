@@ -4,6 +4,7 @@ import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useState, useTransition } from 'react'
 import { commitProposed } from '@/app/farm/[secret]/actions'
+import { EditSheet } from './edit-sheet'
 import { ReadBackList, type ReadBackRow } from './read-back-row'
 import type { ProposedMovement } from '@/lib/agent/tools'
 
@@ -13,16 +14,23 @@ import type { ProposedMovement } from '@/lib/agent/tools'
  * The agent proposes; nothing is written until he taps. That boundary is the
  * product's central promise, so it lives in the interface rather than in a
  * prompt: there is no code path here that publishes without a tap.
+ *
+ * Corrections are held locally against the tool call that produced them, so what
+ * gets committed is what he saw and fixed — never what the model originally
+ * guessed.
  */
 export function Chat({ verbose }: { verbose: boolean }) {
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   })
   const [input, setInput] = useState('')
+  const [drafts, setDrafts] = useState<Record<string, ProposedMovement[]>>({})
   const [committed, setCommitted] = useState<Set<string>>(new Set())
+  const [editing, setEditing] = useState<{ key: string; index: number } | null>(null)
   const [pending, startTransition] = useTransition()
 
   const busy = status === 'submitted' || status === 'streaming'
+  const editingMovement = editing ? drafts[editing.key]?.[editing.index] : undefined
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -41,14 +49,25 @@ export function Chat({ verbose }: { verbose: boolean }) {
               )
             }
 
-            // The read-back. This is the only place a movement can be published.
+            // The read-back — the only place a movement can become public.
             if (part.type === 'tool-proposeMovements' && 'output' in part && part.output) {
               const output = part.output as { movements: ProposedMovement[] }
+              const movements = drafts[key] ?? output.movements
               const done = committed.has(key)
 
               return (
                 <div key={key} className="space-y-3">
-                  <ReadBackList rows={output.movements.map(toRow)} />
+                  <ReadBackList
+                    rows={movements.map(toRow)}
+                    onEdit={
+                      done
+                        ? undefined
+                        : (index) => {
+                            setDrafts((d) => ({ ...d, [key]: d[key] ?? output.movements }))
+                            setEditing({ key, index })
+                          }
+                    }
+                  />
                   {done ? (
                     <p className="meta text-[13px]" style={{ color: 'var(--color-accent-2-700)' }}>
                       It&rsquo;s up. Everything here expires, so it comes down on its own.
@@ -61,7 +80,7 @@ export function Chat({ verbose }: { verbose: boolean }) {
                         className="btn btn-primary"
                         onClick={() =>
                           startTransition(async () => {
-                            await commitProposed(output.movements)
+                            await commitProposed(movements)
                             setCommitted((s) => new Set(s).add(key))
                           })
                         }
@@ -129,6 +148,22 @@ export function Chat({ verbose }: { verbose: boolean }) {
           Send
         </button>
       </form>
+
+      {editing && editingMovement && (
+        <EditSheet
+          movement={editingMovement}
+          onClose={() => setEditing(null)}
+          onSave={(next) => {
+            setDrafts((d) => ({
+              ...d,
+              [editing.key]: (d[editing.key] ?? []).map((m, i) =>
+                i === editing.index ? next : m,
+              ),
+            }))
+            setEditing(null)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -173,25 +208,45 @@ function toRow(movement: ProposedMovement): ReadBackRow {
           ? 'sold'
           : 'spoiled'
 
-  const figure =
-    movement.amountValue === null
+  const soldOut = movement.kind === 'trueup' && movement.amountValue === 0
+
+  const figure = soldOut
+    ? 'none left'
+    : movement.amountValue === null
       ? 'available'
       : `${movement.measured ? '' : '~'}${movement.amountValue}${
           movement.amountUnit ? ` ${movement.amountUnit}` : ''
         }`
 
+  const chip =
+    movement.kind === 'add'
+      ? ('added' as const)
+      : movement.kind === 'remove'
+        ? ('sold' as const)
+        : movement.kind === 'spoil'
+          ? ('spoiled' as const)
+          : undefined
+
+  const meta = movement.forecast
+    ? `not yet · ready ${movement.windowFrom ?? 'later'}`
+    : soldOut
+      ? 'sold out'
+      : movement.amountValue === null
+        ? `${kindWord} · no amount, and that's fine`
+        : `${kindWord} · ${movement.measured ? 'weighed' : 'estimated'}`
+
   return {
     product: movement.product,
     figure,
-    ...(movement.kind === 'add' || movement.kind === 'remove' || movement.kind === 'spoil'
-      ? { chip: movement.kind === 'add' ? ('added' as const) : movement.kind === 'remove' ? ('sold' as const) : ('spoiled' as const) }
-      : {}),
-    tone: movement.forecast ? 'forecast' : movement.amountValue === null ? 'available' : 'normal',
-    meta: movement.forecast
-      ? `not yet · ${movement.windowFrom ?? ''}`
-      : movement.amountValue === null
-        ? `${kindWord} · no amount, and that's fine`
-        : `${kindWord} · ${movement.measured ? 'weighed' : 'estimated'}`,
+    ...(chip ? { chip } : {}),
+    tone: movement.forecast
+      ? 'forecast'
+      : soldOut
+        ? 'spent'
+        : movement.amountValue === null
+          ? 'available'
+          : 'normal',
+    meta,
   }
 }
 

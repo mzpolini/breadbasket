@@ -32,20 +32,40 @@ const FIGURE_TONE: Record<NonNullable<ReadBackRow['tone']>, string> = {
   forecast: 'var(--color-accent-2-700)',
 }
 
-export function ReadBackList({ rows }: { rows: ReadBackRow[] }) {
+export function ReadBackList({
+  rows,
+  onEdit,
+}: {
+  rows: ReadBackRow[]
+  /** Omit to render the row read-only — used where nothing is pending. */
+  onEdit?: (index: number) => void
+}) {
   return (
     <div
       className="w-full overflow-hidden rounded-[28px]"
       style={{ background: 'var(--color-neutral-100)', boxShadow: 'var(--shadow-md)' }}
     >
       {rows.map((row, i) => (
-        <Row key={row.product} row={row} last={i === rows.length - 1} />
+        <Row
+          key={`${row.product}-${i}`}
+          row={row}
+          last={i === rows.length - 1}
+          onEdit={onEdit && (() => onEdit(i))}
+        />
       ))}
     </div>
   )
 }
 
-function Row({ row, last }: { row: ReadBackRow; last: boolean }) {
+function Row({
+  row,
+  last,
+  onEdit,
+}: {
+  row: ReadBackRow
+  last: boolean
+  onEdit?: () => void
+}) {
   const tone = row.tone ?? 'normal'
   const border = last ? undefined : '1px solid color-mix(in srgb, var(--color-text) 10%, transparent)'
 
@@ -132,9 +152,16 @@ function Row({ row, last }: { row: ReadBackRow; last: boolean }) {
         >
           {row.meta}
         </span>
-        <button type="button" className="btn btn-ghost text-[12.5px]" style={{ padding: '8px 14px' }}>
-          edit
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="btn btn-ghost text-[12.5px]"
+            style={{ padding: '8px 14px' }}
+          >
+            edit
+          </button>
+        )}
       </div>
     </div>
   )
