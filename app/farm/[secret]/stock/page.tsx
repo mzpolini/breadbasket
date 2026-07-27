@@ -55,7 +55,7 @@ export default async function FarmerStockPage({
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <StockView rows={rows} now={now} />
+      <StockView rows={rows} now={now} secret={secret} />
     </main>
   )
 }

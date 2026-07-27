@@ -22,7 +22,15 @@ import { StockList } from './stock-list'
  * app, the dark walkthrough is for dusk with a torch — so the switch changes the
  * background with the mode.
  */
-export function StockView({ rows, now }: { rows: InventoryRow[]; now: Date }) {
+export function StockView({
+  rows,
+  now,
+  secret,
+}: {
+  rows: InventoryRow[]
+  now: Date
+  secret: string
+}) {
   const [walking, setWalking] = useState(false)
 
   return (
@@ -44,9 +52,9 @@ export function StockView({ rows, now }: { rows: InventoryRow[]; now: Date }) {
           <CropStack rows={rows} />
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <StockList rows={rows} now={now} />
-        </div>
+        // StockList owns its own scroller and footer — the "Tell it what changed"
+        // button has to sit below the scroll, not inside it.
+        <StockList rows={rows} now={now} secret={secret} />
       )}
     </div>
   )

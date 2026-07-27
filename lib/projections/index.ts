@@ -172,3 +172,71 @@ function weeksSince(measuredAt: string | null, now: Date): number | null {
   const weeks = Math.floor((now.getTime() - Date.parse(measuredAt)) / MS_PER_WEEK)
   return weeks < 1 ? null : weeks
 }
+
+/**
+ * His stock, in the order design `1d` puts it: what needs him, what is quietly
+ * fine, what buyers can no longer see.
+ *
+ * The grouping is the screen's whole argument, so it lives here as a tested pure
+ * function rather than as conditions scattered through JSX. Every row lands in
+ * exactly one group, and the precedence below is deliberate — a forecast that
+ * has also lapsed is still a forecast, because it was never stock.
+ */
+export type InventoryGroups = {
+  /** About to drop off his page. The only group the design gives buttons to. */
+  expiringSoon: InventoryRow[]
+  live: InventoryRow[]
+  /** Arithmetic he has to settle: two units at once, or a balance below zero. */
+  cantTotal: InventoryRow[]
+  lapsed: InventoryRow[]
+  forecast: InventoryRow[]
+}
+
+export type GroupingOptions = ProjectionOptions & {
+  /**
+   * How close to expiry counts as "gone tomorrow". A parameter because it is a
+   * judgement about his week, not a fact — and it pairs with the freshness
+   * windows the founder still has to set.
+   */
+  expiringWithinHours?: number
+}
+
+const DEFAULT_EXPIRING_WITHIN_HOURS = 48
+
+export function groupInventory(
+  rows: InventoryRow[],
+  opts: GroupingOptions,
+): InventoryGroups {
+  const withinHours = opts.expiringWithinHours ?? DEFAULT_EXPIRING_WITHIN_HOURS
+  const groups: InventoryGroups = {
+    expiringSoon: [],
+    live: [],
+    cantTotal: [],
+    lapsed: [],
+    forecast: [],
+  }
+
+  for (const row of rows) {
+    groups[groupOf(row, opts.now, withinHours)].push(row)
+  }
+
+  return groups
+}
+
+function groupOf(
+  row: InventoryRow,
+  now: Date,
+  withinHours: number,
+): keyof InventoryGroups {
+  if (row.window) return 'forecast'
+  if (row.attention === 'unit-conflict' || row.attention === 'negative') return 'cantTotal'
+  if (!row.live) return 'lapsed'
+  if (expiringWithin(row.expiresAt, now, withinHours)) return 'expiringSoon'
+  return 'live'
+}
+
+function expiringWithin(expiresAt: string | null, now: Date, hours: number): boolean {
+  if (expiresAt === null) return false
+  const msLeft = Date.parse(expiresAt) - now.getTime()
+  return msLeft <= hours * 60 * 60 * 1000
+}

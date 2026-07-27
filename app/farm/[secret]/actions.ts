@@ -39,3 +39,65 @@ export async function commitProposed(proposed: ProposedMovement[]) {
 
   return { written: movements.length }
 }
+
+/**
+ * "Still true" — the one verb design `1d` allows on the stock screen.
+ *
+ * It writes a **presence-only movement**: no amount, so the figure is untouched,
+ * but the confirmation clock restarts and the crop stays on his page. That is
+ * precisely what the ledger already means by a movement with no amount, so this
+ * needs no special case anywhere downstream.
+ *
+ * Deliberately not an edit. There is exactly one way stock changes — something
+ * he said — so this view and the conversation can never disagree.
+ */
+export async function confirmStillTrue(product: string) {
+  await appendPlain(product, { kind: 'trueup', amountValue: null, amountUnit: null })
+  return { confirmed: product }
+}
+
+/**
+ * "Sold out" — a true-up to zero, and measured, because an empty crate is the
+ * one quantity a farmer is never estimating.
+ */
+export async function markSoldOut(product: string) {
+  await appendPlain(product, { kind: 'trueup', amountValue: 0, amountUnit: null, measured: true })
+  return { soldOut: product }
+}
+
+/**
+ * Both buttons go through `toMovements` rather than building a row directly, so
+ * a movement written by a tap is indistinguishable from one written by speech.
+ */
+async function appendPlain(
+  product: string,
+  over: Partial<ProposedMovement> & Pick<ProposedMovement, 'kind'>,
+) {
+  const movements = toMovements(
+    [
+      {
+        product,
+        heardAs: product,
+        rawPhrase: '',
+        measured: false,
+        forecast: false,
+        windowFrom: null,
+        windowTo: null,
+        amountValue: null,
+        amountUnit: null,
+        ...over,
+      },
+    ],
+    {
+      farmId: SEED_FARM_ID,
+      sessionId: crypto.randomUUID(),
+      occurredAt: new Date().toISOString(),
+      newId: () => crypto.randomUUID(),
+    },
+  )
+
+  await appendMovements(movements)
+
+  revalidatePath(`/f/${SEED_FARM_ID}`)
+  revalidatePath('/farm', 'layout')
+}
