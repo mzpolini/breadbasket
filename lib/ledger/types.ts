@@ -76,6 +76,11 @@ export type Movement = {
   state: MovementState
   source: MovementSource
   sessionId: string
+  /**
+   * The read-back this movement came from, when there was one. Provenance, and
+   * how the UI knows on reload which proposals he already published.
+   */
+  proposalId?: string
   /** ISO timestamp. */
   occurredAt: string
 }

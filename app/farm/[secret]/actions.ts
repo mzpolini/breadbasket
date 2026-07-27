@@ -15,13 +15,14 @@ import { teach } from '@/lib/storage/vocabulary'
  * enforced by architecture holds better than one enforced by a system prompt.
  * The model proposes; this runs when he taps.
  */
-export async function commitProposed(proposed: ProposedMovement[]) {
+export async function commitProposed(proposed: ProposedMovement[], proposalId?: string) {
   // The conversion itself lives in `lib/agent/commit` so it can be tested
   // without a database — it is the one place a dropped field is silent.
   const movements = toMovements(proposed, {
     farmId: SEED_FARM_ID,
     sessionId: crypto.randomUUID(),
     occurredAt: new Date().toISOString(),
+    proposalId,
     newId: () => crypto.randomUUID(),
   })
 

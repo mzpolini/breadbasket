@@ -7,6 +7,7 @@ import { commitProposed } from '@/app/farm/[secret]/actions'
 import { COUNT_UNIT, formatAmount } from '@/lib/ledger'
 import { EditSheet } from './edit-sheet'
 import type { ProposedMovement } from '@/lib/agent/tools'
+import type { FarmUIMessage } from '@/lib/agent/ui-message'
 
 /**
  * Surface 1, following design `1a`.
@@ -24,13 +25,30 @@ import type { ProposedMovement } from '@/lib/agent/tools'
  * The agent proposes; nothing is written until he taps. No code path here
  * publishes without one.
  */
-export function Chat({ verbose }: { verbose: boolean }) {
+export function Chat({
+  verbose,
+  initialMessages,
+  publishedProposals,
+}: {
+  verbose: boolean
+  initialMessages: FarmUIMessage[]
+  /** Tool-call ids already in the ledger, so a reload cannot double-publish. */
+  publishedProposals: string[]
+}) {
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
+    messages: initialMessages,
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      // Only the new message goes over the wire. The server holds the
+      // transcript and decides how much of it the model gets to see.
+      prepareSendMessagesRequest: ({ messages: all }) => ({
+        body: { message: all[all.length - 1] },
+      }),
+    }),
   })
   const [input, setInput] = useState('')
   const [drafts, setDrafts] = useState<Record<string, ProposedMovement[]>>({})
-  const [committed, setCommitted] = useState<Set<string>>(new Set())
+  const [committed, setCommitted] = useState<Set<string>>(new Set(publishedProposals))
   const [editing, setEditing] = useState<{ key: string; index: number } | null>(null)
   const [pending, startTransition] = useTransition()
   const scroller = useRef<HTMLDivElement>(null)
@@ -71,8 +89,12 @@ export function Chat({ verbose }: { verbose: boolean }) {
 
             if (part.type === 'tool-proposeMovements' && 'output' in part && part.output) {
               const output = part.output as { movements: ProposedMovement[] }
-              const movements = drafts[key] ?? output.movements
-              const done = committed.has(key)
+              // Keyed on the tool-call id, not the render index: this is what the
+              // ledger stores as `proposalId`, so it is the one identifier that
+              // survives a reload and can say "you already published this".
+              const proposalId = (part as { toolCallId?: string }).toolCallId ?? key
+              const movements = drafts[proposalId] ?? output.movements
+              const done = committed.has(proposalId)
 
               return (
                 <ReadBackCard
@@ -81,13 +103,13 @@ export function Chat({ verbose }: { verbose: boolean }) {
                   done={done}
                   pending={pending}
                   onEdit={(index) => {
-                    setDrafts((d) => ({ ...d, [key]: d[key] ?? output.movements }))
-                    setEditing({ key, index })
+                    setDrafts((d) => ({ ...d, [proposalId]: d[proposalId] ?? output.movements }))
+                    setEditing({ key: proposalId, index })
                   }}
                   onPublish={() =>
                     startTransition(async () => {
-                      await commitProposed(movements)
-                      setCommitted((s) => new Set(s).add(key))
+                      await commitProposed(movements, proposalId)
+                      setCommitted((s) => new Set(s).add(proposalId))
                     })
                   }
                   onFix={() => setInput('Not quite — ')}
@@ -269,30 +291,28 @@ function ReadBackCard({
             It&rsquo;s up. Everything here expires, so it comes down on its own.
           </span>
         ) : (
-          <>
-            <span className="text-[16px] leading-[1.35]" style={{ fontFamily: 'var(--font-caprasimo)' }}>
-              Sound right?
-            </span>
-            <div className="flex gap-[10px]">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={onPublish}
-                className="btn btn-primary flex-1"
-                style={{ fontSize: 15.5, padding: '15px 18px' }}
-              >
-                Put it up
-              </button>
-              <button
-                type="button"
-                onClick={onFix}
-                className="btn btn-secondary"
-                style={{ fontSize: 15.5, padding: '15px 18px' }}
-              >
-                Fix something
-              </button>
-            </div>
-          </>
+          // No question above the buttons: the rows are the question, and the
+          // buttons answer it. Asking it in words was one line of noise on a
+          // screen he reads one-handed.
+          <div className="flex gap-[10px]">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={onPublish}
+              className="btn btn-primary flex-1"
+              style={{ fontSize: 15.5, padding: '15px 18px' }}
+            >
+              Sounds good
+            </button>
+            <button
+              type="button"
+              onClick={onFix}
+              className="btn btn-secondary"
+              style={{ fontSize: 15.5, padding: '15px 18px' }}
+            >
+              Fix something
+            </button>
+          </div>
         )}
       </div>
     </div>

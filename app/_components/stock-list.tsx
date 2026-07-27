@@ -244,7 +244,7 @@ export function StockList({
           className="btn btn-primary btn-block"
           style={{ fontSize: 15.5, padding: '15px 18px' }}
         >
-          Tell it what changed
+          Talk about what changed
         </Link>
       </div>
     </>

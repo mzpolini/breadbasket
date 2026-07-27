@@ -38,6 +38,7 @@ export function toMovement(row: MovementRow): Movement {
     state: row.state as MovementState,
     source: row.source as MovementSource,
     sessionId: row.sessionId,
+    ...(row.proposalId ? { proposalId: row.proposalId } : {}),
     occurredAt: row.occurredAt.toISOString(),
   }
 }
@@ -62,6 +63,7 @@ export function toRow(movement: Movement): MovementRow {
     state: movement.state,
     source: movement.source,
     sessionId: movement.sessionId,
+    proposalId: movement.proposalId ?? null,
     occurredAt: new Date(movement.occurredAt),
   }
 }
@@ -85,4 +87,20 @@ export async function movementsForFarm(farmId: string): Promise<Movement[]> {
 export async function appendMovements(batch: Movement[]): Promise<void> {
   if (batch.length === 0) return
   await getDb().insert(movements).values(batch.map(toRow)).onConflictDoNothing()
+}
+
+/**
+ * The read-backs already in the ledger.
+ *
+ * On reload the chat has no idea which cards he published — without this, every
+ * published card comes back offering "Put it up", and tapping it writes the
+ * whole batch a second time under fresh ids that no constraint would catch.
+ */
+export async function publishedProposals(farmId: string): Promise<string[]> {
+  const rows = await getDb()
+    .selectDistinct({ proposalId: movements.proposalId })
+    .from(movements)
+    .where(eq(movements.farmId, farmId))
+
+  return rows.flatMap((row) => (row.proposalId ? [row.proposalId] : []))
 }

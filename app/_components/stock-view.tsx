@@ -52,7 +52,7 @@ export function StockView({
           <CropStack rows={rows} />
         </div>
       ) : (
-        // StockList owns its own scroller and footer — the "Tell it what changed"
+        // StockList owns its own scroller and footer — the "Talk about what changed"
         // button has to sit below the scroll, not inside it.
         <StockList rows={rows} now={now} secret={secret} />
       )}

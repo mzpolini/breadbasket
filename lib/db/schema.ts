@@ -1,7 +1,9 @@
 import {
+  bigserial,
   boolean,
   doublePrecision,
   index,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -72,6 +74,17 @@ export const movements = pgTable(
     sessionId: text('session_id').notNull(),
 
     /**
+     * The read-back this came from — the agent's tool-call id.
+     *
+     * Provenance, and load-bearing: on reload it is the only way to know which
+     * read-back cards he already published. Without it a published card comes
+     * back offering "Put it up" again, and tapping it writes the whole batch a
+     * second time. Null for movements written before this existed, and for the
+     * stock screen's buttons, which have no read-back behind them.
+     */
+    proposalId: text('proposal_id'),
+
+    /**
      * When it happened, not when it was written. The fold sorts on this, and a
      * true-up applied out of sequence discards everything that legitimately
      * followed it — so this is load-bearing rather than metadata.
@@ -82,6 +95,7 @@ export const movements = pgTable(
     // The only read that matters: everything for one farm, folded per product.
     index('movements_farm_product_idx').on(table.farmId, table.product),
     index('movements_occurred_at_idx').on(table.occurredAt),
+    index('movements_proposal_idx').on(table.farmId, table.proposalId),
   ],
 )
 
@@ -113,3 +127,39 @@ export const vocabulary = pgTable(
 )
 
 export type VocabularyRow = typeof vocabulary.$inferSelect
+
+/**
+ * The conversation, kept.
+ *
+ * Stored in `useChat`'s own UIMessage shape — parts and all — so a reload
+ * restores what he actually saw, read-back cards included, rather than a
+ * flattened transcript of text. That fidelity is the point: an un-tapped
+ * proposal must survive a closed tab, or he said something, watched it be
+ * understood, and lost it.
+ *
+ * This is a **record, not the agent's memory.** What the farm has is folded from
+ * movements, and the agent reads that with a tool — so only a recent window of
+ * this ever reaches the model's context. The transcript is here to show him, and
+ * to give the parser eval real utterances instead of invented ones.
+ */
+export const messages = pgTable(
+  'messages',
+  {
+    /** The UIMessage id, so re-saving a turn updates it rather than duplicating. */
+    id: text('id').primaryKey(),
+    farmId: text('farm_id').notNull(),
+    /** user | assistant | system. */
+    role: text('role').notNull(),
+    /** The full UIMessage `parts` array: text, tool calls, tool results. */
+    parts: jsonb('parts').notNull(),
+    /**
+     * Insert order. Timestamps collide inside a millisecond, and a conversation
+     * that reloads out of order is worse than one that reloads not at all.
+     */
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [index('messages_farm_seq_idx').on(table.farmId, table.seq)],
+)
+
+export type MessageRow = typeof messages.$inferSelect

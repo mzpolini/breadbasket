@@ -18,6 +18,8 @@ export type CommitContext = {
   sessionId: string
   /** One timestamp for the whole batch: he said it all in one breath. */
   occurredAt: string
+  /** The read-back these came from, when a read-back is what he tapped. */
+  proposalId?: string
   newId: () => string
 }
 
@@ -40,6 +42,7 @@ export function toMovements(proposed: ProposedMovement[], ctx: CommitContext): M
       state: item.forecast ? 'forecast' : 'confirmed',
       source: 'farmer',
       sessionId: ctx.sessionId,
+      ...(ctx.proposalId ? { proposalId: ctx.proposalId } : {}),
       occurredAt: ctx.occurredAt,
     }
   })

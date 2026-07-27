@@ -41,7 +41,7 @@ export default async function PagePreview({
           page follows.
         </span>
         <Link href={`/farm/${secret}`} className="btn btn-primary">
-          Tell it what changed
+          Talk about what changed
         </Link>
       </div>
     </main>
