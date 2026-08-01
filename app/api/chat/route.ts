@@ -10,7 +10,7 @@ import {
 import { AGENT_INSTRUCTIONS } from '@/lib/agent/instructions'
 import { farmTools } from '@/lib/agent/tools'
 import type { FarmUIMessage } from '@/lib/agent/ui-message'
-import { SEED_FARM_ID } from '@/lib/seed'
+import { checkFarmAccess } from '@/lib/auth/current-user'
 import { messagesForFarm, recentForContext, saveMessages } from '@/lib/storage/messages'
 
 /**
@@ -42,16 +42,21 @@ export const maxDuration = 30
 const CONTEXT_MESSAGES = 24
 
 export async function POST(req: Request) {
-  const { message }: { message: FarmUIMessage } = await req.json()
+  const { message, farmId }: { message: FarmUIMessage; farmId: string } = await req.json()
 
-  const tools = farmTools(SEED_FARM_ID)
-  const history = await messagesForFarm(SEED_FARM_ID)
+  const access = await checkFarmAccess(farmId)
+  if (!access.ok) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: access.status })
+  }
+
+  const tools = farmTools(farmId)
+  const history = await messagesForFarm(farmId)
   const conversation = [...history, message]
 
   // Persist what he said before the model runs. If the request dies mid-stream
   // his sentence is still on the record — losing it is the failure this exists
   // to prevent.
-  await saveMessages(SEED_FARM_ID, [message])
+  await saveMessages(farmId, [message])
 
   let forModel: FarmUIMessage[]
   try {
@@ -92,7 +97,7 @@ export async function POST(req: Request) {
         // function shutting down once the response has been sent.
         const alreadyStored = new Set(history.map((m) => m.id))
         await saveMessages(
-          SEED_FARM_ID,
+          farmId,
           finished.filter((m) => !alreadyStored.has(m.id)),
         )
       },

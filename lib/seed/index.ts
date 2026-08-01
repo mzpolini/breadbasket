@@ -46,7 +46,7 @@ export const SEED_FRESHNESS: Record<string, number> = {
 
 export const SEED_FRESHNESS_DEFAULT = 7
 
-export function seedMovements(now: Date): Movement[] {
+export function seedMovements(now: Date, farmId: string = SEED_FARM_ID): Movement[] {
   const at = (daysAgo: number) =>
     new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString()
 
@@ -57,7 +57,7 @@ export function seedMovements(now: Date): Movement[] {
   let sequence = 0
   const movement = (over: Partial<Movement> & Pick<Movement, 'product'>): Movement => ({
     id: `seed-${++sequence}`,
-    farmId: SEED_FARM_ID,
+    farmId,
     kind: 'trueup',
     measured: false,
     state: 'confirmed',
