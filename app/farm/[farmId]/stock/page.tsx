@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { StockView } from '@/app/_components/stock-view'
 import { balancesFrom } from '@/lib/ledger'
 import { farmerInventory } from '@/lib/projections'
-import { SEED_FARM_ID, SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '@/lib/seed'
+import { SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '@/lib/seed'
 import { movementsForFarm } from '@/lib/storage/movements'
 
 /**
@@ -19,13 +19,13 @@ import { movementsForFarm } from '@/lib/storage/movements'
 export default async function FarmerStockPage({
   params,
 }: {
-  params: Promise<{ secret: string }>
+  params: Promise<{ farmId: string }>
 }) {
-  const { secret } = await params
+  const { farmId } = await params
   const now = new Date()
 
   const rows = farmerInventory(
-    balancesFrom(await movementsForFarm(SEED_FARM_ID), {
+    balancesFrom(await movementsForFarm(farmId), {
       now,
       freshnessDays: SEED_FRESHNESS_DEFAULT,
       freshnessByProduct: SEED_FRESHNESS,
@@ -46,7 +46,7 @@ export default async function FarmerStockPage({
           This only knows what you&rsquo;ve told it. Have a word with it first and your
           crops will show up here.
         </span>
-        <Link href={`/farm/${secret}`} className="btn btn-primary mt-2">
+        <Link href={`/farm/${farmId}`} className="btn btn-primary mt-2">
           Tell it what you&rsquo;ve got
         </Link>
       </main>
@@ -55,7 +55,7 @@ export default async function FarmerStockPage({
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <StockView rows={rows} now={now} secret={secret} />
+      <StockView rows={rows} now={now} farmId={farmId} />
     </main>
   )
 }

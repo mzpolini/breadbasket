@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { AvailabilityCard } from '@/app/_components/availability-card'
-import { SEED_FARM_ID } from '@/lib/seed'
 
 /**
  * The farmer looking at his own public page, **inside his shell** — same card a
@@ -17,9 +16,9 @@ import { SEED_FARM_ID } from '@/lib/seed'
 export default async function PagePreview({
   params,
 }: {
-  params: Promise<{ secret: string }>
+  params: Promise<{ farmId: string }>
 }) {
-  const { secret } = await params
+  const { farmId } = await params
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-[18px] pb-8 pt-[18px]">
@@ -27,10 +26,10 @@ export default async function PagePreview({
         className="meta mb-4 text-[11.5px] leading-[1.5]"
         style={{ color: 'color-mix(in srgb, var(--color-text) 55%, transparent)' }}
       >
-        This is what buyers see at /f/{SEED_FARM_ID}
+        This is what buyers see at /f/{farmId}
       </p>
 
-      <AvailabilityCard />
+      <AvailabilityCard farmId={farmId} />
 
       <div className="mt-6 flex flex-col items-start gap-3">
         <span
@@ -40,7 +39,7 @@ export default async function PagePreview({
           Wrong? There&rsquo;s nothing to edit here &mdash; tell it what changed and this
           page follows.
         </span>
-        <Link href={`/farm/${secret}`} className="btn btn-primary">
+        <Link href={`/farm/${farmId}`} className="btn btn-primary">
           Talk about what changed
         </Link>
       </div>

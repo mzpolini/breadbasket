@@ -12,15 +12,15 @@ import { StockList } from './stock-list'
 export function StockView({
   rows,
   now,
-  secret,
+  farmId,
 }: {
   rows: InventoryRow[]
   now: Date
-  secret: string
+  farmId: string
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col" style={{ background: 'var(--color-bg)' }}>
-      <StockList rows={rows} now={now} secret={secret} />
+      <StockList rows={rows} now={now} farmId={farmId} />
     </div>
   )
 }

@@ -16,10 +16,12 @@
     "db:reset": "dotenv -e .env.local -- tsx scripts/db-reset.ts",
     "db:dump": "dotenv -e .env.local -- tsx scripts/db-dump.ts",
     "msg:dump": "dotenv -e .env.local -- tsx scripts/msg-dump.ts",
-    "msg:reset": "dotenv -e .env.local -- tsx scripts/msg-reset.ts"
+    "msg:reset": "dotenv -e .env.local -- tsx scripts/msg-reset.ts",
+    "bootstrap:farms": "dotenv -e .env.local -- tsx scripts/bootstrap-farms.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.40",
+    "@clerk/nextjs": "^7.6.4",
     "@neondatabase/serverless": "^1.1.0",
     "ai": "^7.0.37",
     "drizzle-orm": "^0.45.2",

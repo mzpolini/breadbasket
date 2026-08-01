@@ -21,11 +21,11 @@ import { SEED_FARM } from '@/lib/seed'
  * written in Organic's vocabulary rather than invented: accent pill for the
  * current surface, muted for the rest, thumb-sized because this is one-handed.
  */
-export function FarmNav({ secret }: { secret: string }) {
+export function FarmNav({ farmId }: { farmId: string }) {
   const pathname = usePathname()
   const params = useSearchParams()
 
-  const base = `/farm/${secret}`
+  const base = `/farm/${farmId}`
   const onStock = pathname.endsWith('/stock')
   const onPreview = pathname.endsWith('/preview')
   const onTalk = !onStock && !onPreview

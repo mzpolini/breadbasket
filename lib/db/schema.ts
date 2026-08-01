@@ -2,6 +2,7 @@ import {
   bigserial,
   boolean,
   doublePrecision,
+  foreignKey,
   index,
   jsonb,
   pgTable,
@@ -9,6 +10,39 @@ import {
   text,
   timestamp,
 } from 'drizzle-orm/pg-core'
+
+/**
+ * Farms — multi-tenant from the start.
+ *
+ * One row per farm. When real farms are added, this grows. The seed farm exists
+ * at id='seed-farm' with values from lib/seed/SEED_FARM.
+ */
+export const farms = pgTable('farms', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  tagline: text('tagline'),
+  market: text('market'),
+  logo: text('logo'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+})
+
+/**
+ * Users — Clerk session → role + farm assignment.
+ *
+ * `id` is the Clerk user id (e.g. 'user_xxx'). `role` is 'farmer' or 'admin'.
+ * Farmers have a `farmId` once assigned; `null` means pending. Admins see all farms.
+ */
+export const users = pgTable(
+  'users',
+  {
+    id: text('id').primaryKey(),
+    role: text('role').notNull(), // 'farmer' | 'admin'
+    farmId: text('farm_id'),
+    email: text('email'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] })],
+)
 
 /**
  * Movements — the only source of truth.
@@ -96,6 +130,7 @@ export const movements = pgTable(
     index('movements_farm_product_idx').on(table.farmId, table.product),
     index('movements_occurred_at_idx').on(table.occurredAt),
     index('movements_proposal_idx').on(table.farmId, table.proposalId),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
   ],
 )
 
@@ -123,7 +158,10 @@ export const vocabulary = pgTable(
     /** Last write wins — the most recent correction is the one he meant. */
     learnedAt: timestamp('learned_at', { withTimezone: true }).notNull(),
   },
-  (table) => [primaryKey({ columns: [table.farmId, table.term] })],
+  (table) => [
+    primaryKey({ columns: [table.farmId, table.term] }),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
+  ],
 )
 
 export type VocabularyRow = typeof vocabulary.$inferSelect
@@ -159,7 +197,13 @@ export const messages = pgTable(
     seq: bigserial('seq', { mode: 'number' }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
-  (table) => [index('messages_farm_seq_idx').on(table.farmId, table.seq)],
+  (table) => [
+    index('messages_farm_seq_idx').on(table.farmId, table.seq),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
+  ],
 )
 
 export type MessageRow = typeof messages.$inferSelect
+
+export type FarmRow = typeof farms.$inferSelect
+export type UserRow = typeof users.$inferSelect

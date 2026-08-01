@@ -17,9 +17,9 @@ import { movementsForFarm } from '@/lib/storage/movements'
  * inside his shell. Shared component, not copied markup — otherwise "your page"
  * eventually stops being his page.
  */
-export async function AvailabilityCard() {
+export async function AvailabilityCard({ farmId = 'seed-farm' }: { farmId?: string } = {}) {
   const now = new Date()
-  const balances = balancesFrom(await movementsForFarm(SEED_FARM_ID), {
+  const balances = balancesFrom(await movementsForFarm(farmId), {
     now,
     freshnessDays: SEED_FRESHNESS_DEFAULT,
     freshnessByProduct: SEED_FRESHNESS,

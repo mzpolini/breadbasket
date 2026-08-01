@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { commitProposed } from '@/app/farm/[secret]/actions'
+import { commitProposed } from '@/app/farm/[farmId]/actions'
 import { COUNT_UNIT, formatAmount } from '@/lib/ledger'
 import { EditSheet } from './edit-sheet'
 import type { ProposedMovement } from '@/lib/agent/tools'
@@ -29,11 +29,13 @@ export function Chat({
   verbose,
   initialMessages,
   publishedProposals,
+  farmId,
 }: {
   verbose: boolean
   initialMessages: FarmUIMessage[]
   /** Tool-call ids already in the ledger, so a reload cannot double-publish. */
   publishedProposals: string[]
+  farmId: string
 }) {
   const { messages, sendMessage, status } = useChat({
     messages: initialMessages,
@@ -42,7 +44,7 @@ export function Chat({
       // Only the new message goes over the wire. The server holds the
       // transcript and decides how much of it the model gets to see.
       prepareSendMessagesRequest: ({ messages: all }) => ({
-        body: { message: all[all.length - 1] },
+        body: { message: all[all.length - 1], farmId },
       }),
     }),
   })
@@ -108,7 +110,7 @@ export function Chat({
                   }}
                   onPublish={() =>
                     startTransition(async () => {
-                      await commitProposed(movements, proposalId)
+                      await commitProposed(farmId, movements, proposalId)
                       setCommitted((s) => new Set(s).add(proposalId))
                     })
                   }

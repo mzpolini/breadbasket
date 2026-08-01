@@ -1,6 +1,21 @@
 import { redirect } from 'next/navigation'
-import { SEED_FARM_SECRET } from '@/lib/seed'
+import { getSessionUser } from '@/lib/auth/current-user'
 
-export default function Home() {
-  redirect(`/farm/${SEED_FARM_SECRET}`)
+export default async function Home() {
+  const user = await getSessionUser()
+
+  if (!user) {
+    redirect('/sign-in')
+  }
+
+  if (user.role === 'admin') {
+    redirect('/admin')
+  }
+
+  if (user.role === 'farmer') {
+    redirect(`/farm/${user.farmId}`)
+  }
+
+  // pending
+  redirect('/onboarding')
 }

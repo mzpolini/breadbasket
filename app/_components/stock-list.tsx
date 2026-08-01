@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useTransition } from 'react'
-import { markSoldOut } from '@/app/farm/[secret]/actions'
+import { markSoldOut } from '@/app/farm/[farmId]/actions'
 import { formatAmount } from '@/lib/ledger'
 import { groupInventory, type InventoryRow } from '@/lib/projections'
 
@@ -18,11 +18,11 @@ import { groupInventory, type InventoryRow } from '@/lib/projections'
 export function StockList({
   rows,
   now,
-  secret,
+  farmId,
 }: {
   rows: InventoryRow[]
   now: Date
-  secret: string
+  farmId: string
 }) {
   const { expiringSoon, live, cantTotal, lapsed, forecast } = groupInventory(rows, { now })
   const [pending, startTransition] = useTransition()
@@ -43,7 +43,7 @@ export function StockList({
                 disabled={pending}
                 onClick={() =>
                   startTransition(() => {
-                    void markSoldOut(row.product)
+                    void markSoldOut(farmId, row.product)
                   })
                 }
                 className="btn btn-primary w-full"
@@ -104,7 +104,7 @@ export function StockList({
                     Buyers see nothing for {row.product} until you pick a unit.
                   </span>
                   <Link
-                    href={`/farm/${secret}`}
+                    href={`/farm/${farmId}`}
                     className="btn btn-secondary self-start"
                     style={{ fontSize: 15, padding: '14px 16px' }}
                   >
@@ -219,7 +219,7 @@ export function StockList({
         }}
       >
         <Link
-          href={`/farm/${secret}`}
+          href={`/farm/${farmId}`}
           className="btn btn-primary btn-block"
           style={{ fontSize: 15.5, padding: '15px 18px' }}
         >

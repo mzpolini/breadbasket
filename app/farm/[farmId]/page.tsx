@@ -1,5 +1,4 @@
 import { Chat } from '@/app/_components/chat'
-import { SEED_FARM_ID } from '@/lib/seed'
 import { messagesForFarm } from '@/lib/storage/messages'
 import { publishedProposals } from '@/lib/storage/movements'
 
@@ -16,20 +15,23 @@ import { publishedProposals } from '@/lib/storage/movements'
  * than a separate admin panel, so what he sees is what actually happened.
  */
 export default async function FarmerChatPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ farmId: string }>
   searchParams: Promise<{ v?: string }>
 }) {
+  const { farmId } = await params
   const verbose = (await searchParams).v === '1'
 
   const [messages, published] = await Promise.all([
-    messagesForFarm(SEED_FARM_ID),
-    publishedProposals(SEED_FARM_ID),
+    messagesForFarm(farmId),
+    publishedProposals(farmId),
   ])
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
-      <Chat verbose={verbose} initialMessages={messages} publishedProposals={published} />
+      <Chat verbose={verbose} initialMessages={messages} publishedProposals={published} farmId={farmId} />
     </main>
   )
 }
