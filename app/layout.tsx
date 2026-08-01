@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Caprasimo, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ServiceWorkerRegister } from "@/app/_components/service-worker-register";
 import "./globals.css";
 
 // Organic's pairing: Caprasimo for display, Figtree for everything else.
@@ -19,6 +20,20 @@ const caprasimo = Caprasimo({
 export const metadata: Metadata = {
   title: "BreadBasket",
   description: "What a farmer has, right now, and never anything stale.",
+  manifest: "/manifest.json",
+  themeColor: "#000000",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BreadBasket",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({
@@ -32,7 +47,10 @@ export default function RootLayout({
         lang="en"
         className={`${figtree.variable} ${caprasimo.variable} h-full antialiased`}
       >
-        <body className="min-h-full flex flex-col">{children}</body>
+        <body className="min-h-full flex flex-col">
+          <ServiceWorkerRegister />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );
