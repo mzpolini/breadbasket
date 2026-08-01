@@ -2,28 +2,18 @@
 
 import Link from 'next/link'
 import { useTransition } from 'react'
-import { confirmStillTrue, markSoldOut } from '@/app/farm/[secret]/actions'
+import { markSoldOut } from '@/app/farm/[secret]/actions'
 import { formatAmount } from '@/lib/ledger'
 import { groupInventory, type InventoryRow } from '@/lib/projections'
 
 /**
- * Surface 2, direction one — design `1d`, "What you've got".
+ * Surface 2, following design `1b`: "What you've got".
  *
- * The comprehensive view: everything he has, sorted by what needs doing. The
- * designer's note was *"1f for the barn, 1d for honesty"* — the walkthrough is
- * better at getting a week confirmed, this is the only one that answers "what
- * have I actually got?", which is the thing the paper notebook does well.
+ * A read-only view of current inventory, sorted by what needs attention.
+ * Only action: "Sold out" for items expiring tomorrow. Everything else changes
+ * through the conversation — this is a view of what he said, not an edit form.
  *
- * **Read-only except one verb.** "Still true" writes a confirmation movement and
- * "Sold out" writes a zero; neither edits a figure. So there is exactly one way
- * stock changes — something he said — and nothing here can ever disagree with
- * the conversation.
- *
- * Each group gets its own treatment because they mean different things: the
- * expiring group is the only one with buttons, conflicts sit on warm ground
- * because buyers are seeing nothing for them, lapsed is a dashed outline with no
- * fill because it is already off his page, and forecasts get a sage rule rather
- * than a card so they never read as stock.
+ * Groups by status: expiring → live → can't-total → lapsed → forecast.
  */
 export function StockList({
   rows,
@@ -48,30 +38,19 @@ export function StockList({
             >
               <Headline row={row} />
               <Meta>{provenance(row)}</Meta>
-              <div className="flex gap-[9px]">
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => startTransition(() => {
-                    void confirmStillTrue(row.product)
-                  })}
-                  className="btn btn-primary flex-1"
-                  style={{ fontSize: 15, padding: '14px 16px' }}
-                >
-                  Still true
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => startTransition(() => {
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  startTransition(() => {
                     void markSoldOut(row.product)
-                  })}
-                  className="btn btn-secondary"
-                  style={{ fontSize: 15, padding: '14px 16px' }}
-                >
-                  Sold out
-                </button>
-              </div>
+                  })
+                }
+                className="btn btn-primary w-full"
+                style={{ fontSize: 15, padding: '14px 16px' }}
+              >
+                Sold out
+              </button>
             </div>
           </Section>
         ))}
