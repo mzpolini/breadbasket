@@ -167,6 +167,41 @@ export const vocabulary = pgTable(
 export type VocabularyRow = typeof vocabulary.$inferSelect
 
 /**
+ * What he's told us about the farm that isn't stock.
+ *
+ * A harvest rhythm — "I pick Tuesdays and Thursdays" — a market he's stopped
+ * doing, a field going in late. None of it is a movement, none of it belongs on
+ * the public page, and all of it changes how his answers should be read. Before
+ * this existed the agent said "noted" and kept nothing, which is the worst of
+ * both: he stops repeating himself and the page quietly goes stale.
+ *
+ * **Deliberately free text, and deliberately not a schedule model.** We don't
+ * yet know which arrangements matter or how they recur, and a `days_of_week`
+ * column guessed at now would be wrong in a way that's expensive to walk back.
+ * His own sentence keeps its full meaning and costs nothing to reshape later.
+ *
+ * Append-only, like the ledger, so a correction is a new note rather than a
+ * silent overwrite — and read newest-first, so the most recent thing he said
+ * about a topic is the one that counts.
+ */
+export const notes = pgTable(
+  'notes',
+  {
+    id: text('id').primaryKey(),
+    farmId: text('farm_id').notNull(),
+    /** His own words, kept verbatim — paraphrasing is how meaning gets lost. */
+    note: text('note').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index('notes_farm_created_idx').on(table.farmId, table.createdAt),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
+  ],
+)
+
+export type NoteRow = typeof notes.$inferSelect
+
+/**
  * The conversation, kept.
  *
  * Stored in `useChat`'s own UIMessage shape — parts and all — so a reload

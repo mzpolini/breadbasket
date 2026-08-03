@@ -7,7 +7,7 @@
  * vocabulary would leave a farm that knows his words but not his crops.
  */
 import { getDb } from '../lib/db'
-import { messages, movements, vocabulary } from '../lib/db/schema'
+import { messages, movements, notes, vocabulary } from '../lib/db/schema'
 
 async function main() {
   const clearedMovements = await getDb().delete(movements).returning({ id: movements.id })
@@ -15,9 +15,13 @@ async function main() {
   // The transcript goes too, or "knows nothing" is a lie: the agent would still
   // be handed six weeks of context about crops the ledger no longer has.
   const clearedMessages = await getDb().delete(messages).returning({ id: messages.id })
+  // Notes ride in the system prompt, so a survivor here is the loudest thing in
+  // a "cold start" — the agent would open by knowing his picking days.
+  const clearedNotes = await getDb().delete(notes).returning({ id: notes.id })
 
   console.log(
-    `cleared ${clearedMovements.length} movements, ${clearedTerms.length} learned words, and ${clearedMessages.length} messages — the farm now knows nothing`,
+    `cleared ${clearedMovements.length} movements, ${clearedTerms.length} learned words, ` +
+      `${clearedMessages.length} messages, and ${clearedNotes.length} notes — the farm now knows nothing`,
   )
 }
 

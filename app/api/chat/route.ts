@@ -12,6 +12,7 @@ import { farmTools } from '@/lib/agent/tools'
 import type { FarmUIMessage } from '@/lib/agent/ui-message'
 import { checkFarmAccess } from '@/lib/auth/current-user'
 import { messagesForFarm, recentForContext, saveMessages } from '@/lib/storage/messages'
+import { notesForFarm } from '@/lib/storage/notes'
 
 /**
  * The conversation.
@@ -40,6 +41,24 @@ export const maxDuration = 30
  * short of enough for six weeks of small talk to crowd out today's sentence.
  */
 const CONTEXT_MESSAGES = 24
+
+/**
+ * The standing facts, newest first, appended to the system prompt.
+ *
+ * Newest first because notes are append-only: when he changes his picking days
+ * both are on record, and order is the only thing telling the model which one
+ * still holds. Empty when he has told us nothing, so a new farm carries no
+ * heading for a section with nothing under it.
+ */
+function standingFacts(notes: { note: string }[]): string {
+  if (notes.length === 0) return ''
+
+  return [
+    '\n\n## What he has told you about this farm',
+    'Most recent first — where two say different things, the first one is true now.',
+    ...notes.map((row) => `- ${row.note}`),
+  ].join('\n')
+}
 
 export async function POST(req: Request) {
   const { message, farmId }: { message: FarmUIMessage; farmId: string } = await req.json()
@@ -74,7 +93,11 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: 'anthropic/claude-sonnet-5',
-    instructions: AGENT_INSTRUCTIONS,
+    // Notes ride in the system prompt rather than behind a tool, because the
+    // agent must not have to *remember to ask* what it knows about the farm —
+    // that is the failure this replaced. The window only holds a dozen turns, so
+    // anything not carried here is gone by the next conversation.
+    instructions: AGENT_INSTRUCTIONS + standingFacts(await notesForFarm(farmId)),
     messages: await convertToModelMessages(forModel),
     tools,
     // Enough to look at his stock, resolve his words, and read back — no more.

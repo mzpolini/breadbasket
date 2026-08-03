@@ -4,18 +4,20 @@ import { balancesFrom, formatAmount } from '../ledger'
 import { farmerInventory } from '../projections'
 import { SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '../seed'
 import { movementsForFarm } from '../storage/movements'
+import { remember } from '../storage/notes'
 import { vocabularyFor } from '../storage/vocabulary'
 import { resolve } from '../vocabulary'
 
 /**
  * The agent's tool surface.
  *
- * Three tools, and the granularity is deliberate: because the UI renders from
- * tool calls, granularity is a **UI contract** rather than an implementation
- * detail. One coarse `updateInventory` would be easier to build and would show
- * the founder nothing — which fails the pilot's second success criterion
- * outright. These three mirror the three steps the design already narrates:
- * read what he wrote, match it to his crops, then show him the book.
+ * The granularity is deliberate: because the UI renders from tool calls,
+ * granularity is a **UI contract** rather than an implementation detail. One
+ * coarse `updateInventory` would be easier to build and would show the founder
+ * nothing — which fails the pilot's second success criterion outright. The first
+ * three mirror the steps the design already narrates: read what he wrote, match
+ * it to his crops, then show him the book. The fourth keeps what he said about
+ * the farm itself, which is context rather than stock.
  *
  * **Committing is not here on purpose.** If the model could write to the ledger,
  * then "nothing publishes without his confirmation" would depend on the model
@@ -136,6 +138,28 @@ export function farmTools(farmId: string) {
         // Returned so the UI can render the read-back and offer "Put it up".
         movements,
       }),
+    }),
+
+    rememberAboutFarm: tool({
+      description:
+        'Keep something he said about how the farm runs — a picking rhythm, a ' +
+        'market day, a field coming in late. Only for standing facts, never for ' +
+        'stock: a quantity is a movement and belongs in proposeMovements. Use his ' +
+        'own words. Say it back in one short line so he can correct it.',
+      inputSchema: z.object({
+        note: z
+          .string()
+          .describe(
+            'One standing fact, in his phrasing — "picks Tuesdays and Thursdays". ' +
+              'Not a quantity, and not a promise to do something later.',
+          ),
+      }),
+      // No tap gate, unlike a movement: this reaches his context, never his
+      // public page, so there is nothing here for a buyer to be misled by.
+      execute: async ({ note }) => {
+        await remember(farmId, note)
+        return { remembered: note }
+      },
     }),
   }
 }
