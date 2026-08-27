@@ -194,7 +194,7 @@ function kicker(row: InventoryRow): string {
   if (row.attention === 'unit-conflict') return 'COUNTED TWO WAYS'
   if (row.attention === 'negative') return 'A PICK IS MISSING'
   if (row.attention === 'needs-weighing') return 'GUESSED FOR A WHILE'
-  if (!row.live) return 'OFF YOUR PAGE'
+  if (!row.live) return 'GREYED ON YOUR PAGE'
   if (row.confidence === 'weighed') return 'WEIGHED'
   return 'ON YOUR PAGE'
 }
@@ -220,7 +220,7 @@ function explain(row: InventoryRow): string {
       break
   }
   if (!row.live) {
-    return "This dropped off your page. Tell me whether it's sold out or just went unmentioned."
+    return "Buyers see this greyed — you haven't mentioned it in a week. Sold out, or still there?"
   }
   if (!row.quantity) {
     return "You never gave me a number, and that's fine — buyers just see that you have some."

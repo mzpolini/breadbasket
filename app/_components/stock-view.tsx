@@ -1,5 +1,6 @@
 'use client'
 
+import type { ActiveRule } from '@/lib/cadence'
 import type { InventoryRow } from '@/lib/projections'
 import { StockList } from './stock-list'
 
@@ -11,16 +12,18 @@ import { StockList } from './stock-list'
  */
 export function StockView({
   rows,
+  rules,
   now,
   farmId,
 }: {
   rows: InventoryRow[]
+  rules: ActiveRule[]
   now: Date
   farmId: string
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col" style={{ background: 'var(--color-bg)' }}>
-      <StockList rows={rows} now={now} farmId={farmId} />
+      <StockList rows={rows} rules={rules} now={now} farmId={farmId} />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useTransition } from 'react'
 import { markSoldOut } from '@/app/farm/[farmId]/actions'
+import type { ActiveRule } from '@/lib/cadence'
 import { formatAmount } from '@/lib/ledger'
 import { groupInventory, type InventoryRow } from '@/lib/projections'
 
@@ -17,10 +18,12 @@ import { groupInventory, type InventoryRow } from '@/lib/projections'
  */
 export function StockList({
   rows,
+  rules,
   now,
   farmId,
 }: {
   rows: InventoryRow[]
+  rules: ActiveRule[]
   now: Date
   farmId: string
 }) {
@@ -142,7 +145,7 @@ export function StockList({
         )}
 
         {lapsed.length > 0 && (
-          <Section label="LAPSED — BUYERS DON'T SEE THESE">
+          <Section label="NOT CONFIRMED LATELY — SHOWS AS STALE">
             {lapsed.map((row) => (
               <div
                 key={row.product}
@@ -167,8 +170,54 @@ export function StockList({
                   className="text-[12.5px] leading-[1.45]"
                   style={{ color: 'color-mix(in srgb, var(--color-text) 62%, transparent)' }}
                 >
-                  Off the page since {dayOf(row.expiresAt, now)}. Sold out, or just not
-                  mentioned?
+                  Greyed on your page since {dayOf(row.expiresAt, now)}. Sold out, or just
+                  not mentioned?
+                </span>
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {rules.length > 0 && (
+          <Section label="EVERY WEEK — COMING SOON ON YOUR PAGE" tone="sage">
+            {rules.map((rule) => (
+              <div
+                key={rule.id}
+                className="flex flex-col gap-[3px] py-[6px] pl-[14px]"
+                style={{
+                  borderLeft: '4px solid var(--color-accent-2-300)',
+                  opacity: rule.flagged ? 0.6 : 1,
+                }}
+              >
+                <div className="flex items-baseline gap-[10px]">
+                  <span
+                    className="flex-1 text-[16.5px] font-semibold capitalize leading-[1.2]"
+                    style={{ color: 'var(--color-accent-2-700)' }}
+                  >
+                    {rule.product}
+                  </span>
+                  <span
+                    className="tnum text-[16.5px] leading-[1.2]"
+                    style={{ color: 'var(--color-accent-2-700)' }}
+                  >
+                    {rule.amount ? `~${formatAmount(rule.amount)}` : 'expected'}
+                  </span>
+                </div>
+                <span
+                  className="text-[13px] leading-[1.4]"
+                  style={{ color: 'var(--color-accent-2-700)' }}
+                >
+                  &ldquo;{rule.rawPhrase}&rdquo;
+                </span>
+                <span
+                  className="meta text-[12.5px] leading-[1.4]"
+                  style={{ color: 'var(--color-accent-2-700)' }}
+                >
+                  {rule.interval === 'weekly' ? 'every week' : rule.interval}
+                  {rule.endsOn ? ` · through ${short(rule.endsOn)}` : ''}
+                  {rule.flagged
+                    ? ` · not mentioned in ${rule.daysSinceSpoken} days`
+                    : ' · a rhythm, not stock'}
                 </span>
               </div>
             ))}
@@ -176,7 +225,7 @@ export function StockList({
         )}
 
         {forecast.length > 0 && (
-          <Section label="NEXT WEEK" tone="sage">
+          <Section label="ONE-OFF, COMING" tone="sage">
             {forecast.map((row) => (
               <div
                 key={row.product}

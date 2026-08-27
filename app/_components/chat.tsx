@@ -3,10 +3,10 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { commitProposed } from '@/app/farm/[farmId]/actions'
+import { commitProposed, commitRules } from '@/app/farm/[farmId]/actions'
 import { COUNT_UNIT, formatAmount } from '@/lib/ledger'
 import { EditSheet } from './edit-sheet'
-import type { ProposedMovement } from '@/lib/agent/tools'
+import type { ProposedMovement, ProposedRule } from '@/lib/agent/tools'
 import type { FarmUIMessage } from '@/lib/agent/ui-message'
 
 /**
@@ -111,6 +111,28 @@ export function Chat({
                   onPublish={() =>
                     startTransition(async () => {
                       await commitProposed(farmId, movements, proposalId)
+                      setCommitted((s) => new Set(s).add(proposalId))
+                    })
+                  }
+                  onFix={() => setInput('Not quite — ')}
+                />
+              )
+            }
+
+            if (part.type === 'tool-proposeHarvestRules' && 'output' in part && part.output) {
+              const output = part.output as { rules: ProposedRule[] }
+              const proposalId = (part as { toolCallId?: string }).toolCallId ?? key
+              const done = committed.has(proposalId)
+
+              return (
+                <RuleCard
+                  key={key}
+                  rules={output.rules}
+                  done={done}
+                  pending={pending}
+                  onPublish={() =>
+                    startTransition(async () => {
+                      await commitRules(farmId, output.rules, proposalId)
                       setCommitted((s) => new Set(s).add(proposalId))
                     })
                   }
@@ -248,6 +270,12 @@ function describe(type: string): { label: string; detail: string; tone: 'ok' | '
   }
   if (type.includes('proposeMovements')) {
     return { label: 'WROTE UP WHAT I HEARD', detail: 'nothing published yet', tone: 'ok' }
+  }
+  if (type.includes('proposeHarvestRules')) {
+    return { label: 'HEARD A RHYTHM', detail: 'a rule, not stock · nothing published yet', tone: 'ok' }
+  }
+  if (type.includes('rememberAboutFarm')) {
+    return { label: 'NOTED ABOUT THE FARM', detail: 'kept, never shown to buyers', tone: 'ok' }
   }
   return { label: type, detail: '', tone: 'warn' }
 }
@@ -398,6 +426,94 @@ function Row({
           >
             edit
           </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The read-back for a harvest rule. Sage-edged like a forecast row, because a
+ * rule is never stock — and the sentence is shown whole, because the sentence
+ * is exactly what a buyer will read under "coming soon".
+ */
+function RuleCard({
+  rules,
+  done,
+  pending,
+  onPublish,
+  onFix,
+}: {
+  rules: ProposedRule[]
+  done: boolean
+  pending: boolean
+  onPublish: () => void
+  onFix: () => void
+}) {
+  return (
+    <div
+      className="self-stretch overflow-hidden rounded-[24px]"
+      style={{ background: 'var(--color-neutral-100)', boxShadow: 'var(--shadow-md)' }}
+    >
+      {rules.map((rule, index) => (
+        <div
+          key={`${rule.product}-${index}`}
+          className="flex flex-col gap-[5px] px-[18px] py-[15px]"
+          style={{
+            borderBottom: '1px solid color-mix(in srgb, var(--color-text) 10%, transparent)',
+            borderLeft: '4px solid var(--color-accent-2-300)',
+          }}
+        >
+          <div className="flex items-baseline gap-3">
+            <span className="flex-1 text-[16.5px] font-semibold capitalize leading-[1.25]">
+              {rule.product}
+            </span>
+            <span
+              className="meta text-[12.5px] leading-[1.25]"
+              style={{ color: 'var(--color-accent-2-700)' }}
+            >
+              {rule.ended ? 'done' : rule.interval === 'weekly' ? 'every week' : rule.interval}
+              {!rule.ended && rule.endsOn ? ` · through ${rule.endsOn}` : ''}
+            </span>
+          </div>
+          <span
+            className="text-[13.5px] leading-[1.45]"
+            style={{ color: 'color-mix(in srgb, var(--color-text) 72%, transparent)' }}
+          >
+            {rule.ended ? 'Comes off your page.' : `Buyers will read: “${rule.rawPhrase}”`}
+          </span>
+        </div>
+      ))}
+
+      <div className="flex flex-col gap-[13px] px-[18px] pb-[19px] pt-[17px]">
+        {done ? (
+          <span
+            className="meta text-[12.5px] leading-[1.5]"
+            style={{ color: 'var(--color-accent-2-700)' }}
+          >
+            Noted as coming soon. It&rsquo;s a rhythm, not stock &mdash; tell me when you
+            actually pick.
+          </span>
+        ) : (
+          <div className="flex gap-[10px]">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={onPublish}
+              className="btn btn-primary flex-1"
+              style={{ fontSize: 15.5, padding: '15px 18px' }}
+            >
+              Sounds good
+            </button>
+            <button
+              type="button"
+              onClick={onFix}
+              className="btn btn-secondary"
+              style={{ fontSize: 15.5, padding: '15px 18px' }}
+            >
+              Fix something
+            </button>
+          </div>
         )}
       </div>
     </div>

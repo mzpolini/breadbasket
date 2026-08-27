@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { StockView } from '@/app/_components/stock-view'
+import { activeRules } from '@/lib/cadence'
 import { balancesFrom } from '@/lib/ledger'
 import { farmerInventory } from '@/lib/projections'
-import { SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '@/lib/seed'
+import { FRESHNESS_DAYS } from '@/lib/seed'
+import { rulesForFarm } from '@/lib/storage/harvest-rules'
 import { movementsForFarm } from '@/lib/storage/movements'
 
 /**
@@ -24,16 +26,11 @@ export default async function FarmerStockPage({
   const { farmId } = await params
   const now = new Date()
 
-  const rows = farmerInventory(
-    balancesFrom(await movementsForFarm(farmId), {
-      now,
-      freshnessDays: SEED_FRESHNESS_DEFAULT,
-      freshnessByProduct: SEED_FRESHNESS,
-    }),
-    { now },
-  )
+  const [movements, storedRules] = await Promise.all([movementsForFarm(farmId), rulesForFarm(farmId)])
+  const rows = farmerInventory(balancesFrom(movements, { now, freshnessDays: FRESHNESS_DAYS }), { now })
+  const rules = activeRules(storedRules, { now, freshnessDays: FRESHNESS_DAYS })
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && rules.length === 0) {
     return (
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
         <span className="text-[26px]" style={{ fontFamily: 'var(--font-caprasimo)' }}>
@@ -55,7 +52,7 @@ export default async function FarmerStockPage({
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <StockView rows={rows} now={now} farmId={farmId} />
+      <StockView rows={rows} rules={rules} now={now} farmId={farmId} />
     </main>
   )
 }
