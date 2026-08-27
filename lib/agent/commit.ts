@@ -1,5 +1,6 @@
+import type { HarvestRule } from '../cadence'
 import { COUNT_UNIT, type Movement } from '../ledger'
-import type { ProposedMovement } from './tools'
+import type { ProposedMovement, ProposedRule } from './tools'
 
 /**
  * Turns what the model proposed into what the ledger records.
@@ -57,4 +58,41 @@ export function toMovements(proposed: ProposedMovement[], ctx: CommitContext): M
 function toAmount(item: ProposedMovement) {
   if (item.amountValue === null) return undefined
   return { value: item.amountValue, unit: item.amountUnit?.trim() || COUNT_UNIT }
+}
+
+export type RuleCommitContext = {
+  farmId: string
+  proposalId?: string
+  createdAt: string
+  newId: () => string
+  /** The standing rule for this product, if one exists — the new rule supersedes it. */
+  currentRuleIdFor: (product: string) => string | undefined
+}
+
+/**
+ * Turns proposed rules into stored rules. Every rule for a product that already
+ * has one supersedes it, whether it is a change, a re-affirmation, or an end —
+ * that is what makes "newest wins" the whole resolution rule.
+ */
+export function toRules(proposed: ProposedRule[], ctx: RuleCommitContext): HarvestRule[] {
+  return proposed.map((item) => {
+    const product = item.product.toLowerCase().trim()
+    const supersedesId = ctx.currentRuleIdFor(product)
+    return {
+      id: ctx.newId(),
+      farmId: ctx.farmId,
+      product,
+      rawPhrase: item.rawPhrase,
+      ...(item.amountValue !== null
+        ? { amount: { value: item.amountValue, unit: item.amountUnit?.trim() || COUNT_UNIT } }
+        : {}),
+      interval: item.interval.trim().toLowerCase() || 'weekly',
+      ...(item.startsOn ? { startsOn: item.startsOn } : {}),
+      ...(item.endsOn ? { endsOn: item.endsOn } : {}),
+      ended: item.ended,
+      ...(supersedesId ? { supersedesId } : {}),
+      ...(ctx.proposalId ? { proposalId: ctx.proposalId } : {}),
+      createdAt: ctx.createdAt,
+    }
+  })
 }

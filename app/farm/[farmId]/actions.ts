@@ -1,8 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { toMovements } from '@/lib/agent/commit'
-import type { ProposedMovement } from '@/lib/agent/tools'
+import { toMovements, toRules } from '@/lib/agent/commit'
+import type { ProposedMovement, ProposedRule } from '@/lib/agent/tools'
+import { activeRules } from '@/lib/cadence'
+import { FRESHNESS_DAYS } from '@/lib/seed'
+import { appendRules, rulesForFarm } from '@/lib/storage/harvest-rules'
 import { requireFarmAccess } from '@/lib/auth/current-user'
 import { appendMovements } from '@/lib/storage/movements'
 import { teach } from '@/lib/storage/vocabulary'
@@ -43,6 +46,37 @@ export async function commitProposed(
   revalidatePath('/farm', 'layout')
 
   return { written: movements.length }
+}
+
+/**
+ * A harvest rule reaches storage the same way a movement does: he taps. A new
+ * rule for a crop that already has one supersedes it — change, re-affirmation
+ * and end are all the same write.
+ */
+export async function commitRules(farmId: string, proposed: ProposedRule[], proposalId?: string) {
+  await requireFarmAccess(farmId)
+
+  const now = new Date()
+  const standing = activeRules(await rulesForFarm(farmId), { now, freshnessDays: FRESHNESS_DAYS })
+  const byProduct = new Map(standing.map((rule) => [rule.product, rule.id]))
+
+  const rules = toRules(proposed, {
+    farmId,
+    proposalId,
+    createdAt: now.toISOString(),
+    newId: () => crypto.randomUUID(),
+    currentRuleIdFor: (product) => byProduct.get(product),
+  })
+
+  await appendRules(rules)
+  await Promise.all(
+    proposed.map((item) => teach(farmId, item.heardAs, item.product.toLowerCase().trim())),
+  )
+
+  revalidatePath(`/f/${farmId}`)
+  revalidatePath('/farm', 'layout')
+
+  return { written: rules.length }
 }
 
 /**

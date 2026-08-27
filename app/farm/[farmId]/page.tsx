@@ -1,5 +1,6 @@
 import { Chat } from '@/app/_components/chat'
 import { messagesForFarm } from '@/lib/storage/messages'
+import { publishedRuleProposals } from '@/lib/storage/harvest-rules'
 import { publishedProposals } from '@/lib/storage/movements'
 
 /**
@@ -24,10 +25,12 @@ export default async function FarmerChatPage({
   const { farmId } = await params
   const verbose = (await searchParams).v === '1'
 
-  const [messages, published] = await Promise.all([
+  const [messages, publishedMovements, publishedRules] = await Promise.all([
     messagesForFarm(farmId),
     publishedProposals(farmId),
+    publishedRuleProposals(farmId),
   ])
+  const published = [...publishedMovements, ...publishedRules]
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">

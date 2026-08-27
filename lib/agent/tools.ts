@@ -2,7 +2,9 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { balancesFrom, formatAmount } from '../ledger'
 import { farmerInventory } from '../projections'
-import { SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT } from '../seed'
+import { activeRules } from '../cadence'
+import { FRESHNESS_DAYS } from '../seed'
+import { rulesForFarm } from '../storage/harvest-rules'
 import { movementsForFarm } from '../storage/movements'
 import { remember } from '../storage/notes'
 import { vocabularyFor } from '../storage/vocabulary'
@@ -64,6 +66,37 @@ export const proposedMovementSchema = z.object({
 
 export type ProposedMovement = z.infer<typeof proposedMovementSchema>
 
+/**
+ * A harvest rule as the model proposes it. Flat, like a movement. A rule is
+ * never stock: it is what he expects to pick on repeat, and it shows a customer
+ * only as "coming soon", in his own words.
+ */
+export const proposedRuleSchema = z.object({
+  product: z.string().describe('The crop, normalised to his own vocabulary where known'),
+  heardAs: z.string().describe('The crop word he actually used, verbatim'),
+  rawPhrase: z
+    .string()
+    .describe(
+      'His whole sentence about this rhythm, verbatim — this is what buyers read. ' +
+        '"about twenty pounds of watermelon every week through September"',
+    ),
+  amountValue: z.number().nullable().describe('Expected amount per interval; null if he gave none'),
+  amountUnit: z.string().nullable().describe('His unit, as he says it'),
+  interval: z
+    .string()
+    .describe(
+      'Exactly "weekly" when he means once a week, however he phrased it. Anything ' +
+        'else — "tuesdays and thursdays", "every other week" — copy his words as-is.',
+    ),
+  startsOn: z.string().nullable().describe('YYYY-MM-DD if he said when it starts; else null'),
+  endsOn: z.string().nullable().describe('YYYY-MM-DD if he said when it ends; else null'),
+  ended: z
+    .boolean()
+    .describe('True only when he is saying the rhythm is over — "watermelon\'s done"'),
+})
+
+export type ProposedRule = z.infer<typeof proposedRuleSchema>
+
 export function farmTools(farmId: string) {
   return {
     getCurrentStock: tool({
@@ -76,19 +109,30 @@ export function farmTools(farmId: string) {
         const rows = farmerInventory(
           balancesFrom(await movementsForFarm(farmId), {
             now,
-            freshnessDays: SEED_FRESHNESS_DEFAULT,
-            freshnessByProduct: SEED_FRESHNESS,
+            freshnessDays: FRESHNESS_DAYS,
           }),
           { now },
         )
+
+        const rules = activeRules(await rulesForFarm(farmId), { now, freshnessDays: FRESHNESS_DAYS })
 
         return {
           crops: rows.map((row) => ({
             product: row.product,
             amount: row.quantity ? formatAmount(row.quantity) : 'some',
             confidence: row.confidence,
-            live: row.live,
+            /** False means flagged: he has not mentioned it in a week. Still shown, as stale. */
+            fresh: row.live,
             needsAttention: row.attention,
+          })),
+          /** Standing harvest rules — what he expects to pick on repeat. Not stock. */
+          harvestRules: rules.map((rule) => ({
+            product: rule.product,
+            saidAs: rule.rawPhrase,
+            interval: rule.interval,
+            endsOn: rule.endsOn ?? null,
+            daysSinceHeMentionedIt: rule.daysSinceSpoken,
+            flagged: rule.flagged,
           })),
         }
       },
@@ -138,6 +182,19 @@ export function farmTools(farmId: string) {
         // Returned so the UI can render the read-back and offer "Put it up".
         movements,
       }),
+    }),
+
+    proposeHarvestRules: tool({
+      description:
+        'Show him what you heard about a harvest *rhythm* — a crop he expects to ' +
+        'pick on repeat: "twenty pounds of watermelon every week through September". ' +
+        'Also for changing one ("make it fifteen"), re-affirming one at check-in ' +
+        '("still on for watermelon"), or ending one ("watermelon\'s done"). ' +
+        'Never for stock he has now — that is proposeMovements. It writes nothing.',
+      inputSchema: z.object({
+        rules: z.array(proposedRuleSchema),
+      }),
+      execute: async ({ rules }) => ({ proposed: rules.length, rules }),
     }),
 
     rememberAboutFarm: tool({
