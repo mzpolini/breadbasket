@@ -1,3 +1,4 @@
+import { WEEKLY, type HarvestRule } from '../cadence'
 import type { Movement } from '../ledger'
 
 /**
@@ -31,20 +32,35 @@ export const SEED_FARM = {
 export const SEED_FARM_SECRET = 'seed-farm-preview'
 
 /**
- * How long each crop stays true. Placeholders — these are the founder's numbers
- * to set, and they are values precisely so his answer needs no code change.
+ * The freshness window: how long anything he says stays trusted before it is
+ * flagged. **Flat seven days, every crop — a temporary POC decision**
+ * (NORTHSTAR.md). It is a trust clock (has he checked in?), not a spoilage
+ * guess, which is why one number is honest enough for now. Per-crop windows
+ * were sketched and deliberately not built.
  */
-export const SEED_FRESHNESS: Record<string, number> = {
-  'collard greens': 3,
-  'mustard greens': 3,
-  tomatoes: 5,
-  peaches: 4,
-  'summer squash': 7,
-  watermelon: 10,
-  'sweet potatoes': 60,
-}
+export const FRESHNESS_DAYS = 7
 
-export const SEED_FRESHNESS_DEFAULT = 7
+/**
+ * One standing harvest rule, so the stand's "coming soon" and the stock view's
+ * standing section have something to show. This is the sentence that broke the
+ * first beta.
+ */
+export function seedHarvestRules(now: Date, farmId: string = SEED_FARM_ID): HarvestRule[] {
+  const year = now.getUTCFullYear()
+  return [
+    {
+      id: 'seed-rule-1',
+      farmId,
+      product: 'watermelon',
+      rawPhrase: 'about twenty pounds of watermelon every week through September',
+      amount: { value: 20, unit: 'lb' },
+      interval: WEEKLY,
+      endsOn: `${year}-09-30`,
+      ended: false,
+      createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ]
+}
 
 export function seedMovements(now: Date, farmId: string = SEED_FARM_ID): Movement[] {
   const at = (daysAgo: number) =>
@@ -114,8 +130,8 @@ export function seedMovements(now: Date, farmId: string = SEED_FARM_ID): Movemen
       occurredAt: at(1),
     }),
 
-    // Confirmed 20 days ago against a 10-day window: lapsed, and gone from the
-    // public page. He still sees it, or he cannot tell sold-out from forgotten.
+    // Spoken about 20 days ago: flagged. Still on the stand, visibly stale, and
+    // still in his view — or he cannot tell sold-out from forgotten.
     movement({
       product: 'watermelon',
       amount: { value: 200, unit: 'lb' },

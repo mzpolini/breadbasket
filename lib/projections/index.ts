@@ -73,6 +73,51 @@ export function publicListings(
   })
 }
 
+/**
+ * What a farm-stand customer sees for one crop. **No quantities, ever** — the
+ * stand shows availability only. Numbers are for the farmer and, later, for
+ * wholesale buyers.
+ */
+export type StandListing = {
+  product: string
+  /** `stale` = flagged: he has not spoken about it inside the freshness window. */
+  status: 'available' | 'stale'
+  /** Whole days since he last spoke about this crop. */
+  daysSinceSpoken: number
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+/**
+ * The farm stand's "available now". Flagged positions are **shown, not hidden**
+ * (NORTHSTAR.md, flag-don't-delete): a stale item greyed with its age is more
+ * honest than a silent disappearance, and the stale page is the farmer's
+ * reminder to check in. Sold out (zero) and negative (a missing movement) are
+ * withheld — neither is an offer.
+ */
+export function standListings(balances: ProductBalance[], opts: ProjectionOptions): StandListing[] {
+  return balances.flatMap(({ product, window, balance }) => {
+    if (window || balance.confirmedAt === null) return []
+    if (balance.status === 'known' && balance.quantity <= 0) return []
+
+    return [
+      {
+        product,
+        status: balance.live ? ('available' as const) : ('stale' as const),
+        daysSinceSpoken: Math.floor(
+          (opts.now.getTime() - Date.parse(balance.confirmedAt)) / MS_PER_DAY,
+        ),
+      },
+    ]
+  })
+}
+
+/** When the farmer last said anything at all — the stand's headline freshness line. */
+export function lastSpokenAt(balances: ProductBalance[]): string | null {
+  const times = balances.flatMap(({ balance }) => (balance.confirmedAt ? [balance.confirmedAt] : []))
+  return times.length === 0 ? null : times.reduce((a, b) => (a > b ? a : b))
+}
+
 export type ForecastListing = {
   product: string
   quantity: Quantity | null

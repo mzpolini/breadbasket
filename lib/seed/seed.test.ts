@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { balancesFrom } from '../ledger'
 import { farmerInventory, publicListings } from '../projections'
-import { SEED_FRESHNESS, SEED_FRESHNESS_DEFAULT, seedMovements } from './index'
+import { FRESHNESS_DAYS, seedMovements } from './index'
 
 /**
  * The seed exists to exercise every state a position can be in — the awkward
@@ -15,8 +15,7 @@ const NOW = new Date('2026-08-20T12:00:00Z')
 const balances = () =>
   balancesFrom(seedMovements(NOW), {
     now: NOW,
-    freshnessDays: SEED_FRESHNESS_DEFAULT,
-    freshnessByProduct: SEED_FRESHNESS,
+    freshnessDays: FRESHNESS_DAYS,
   })
 
 describe('the seed farm', () => {

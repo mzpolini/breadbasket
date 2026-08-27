@@ -8,7 +8,8 @@
  * Run with `pnpm db:seed` or `pnpm db:seed <farmId>`. It needs dotenv-cli
  * because tsx does not read .env.local on its own — only Next does.
  */
-import { seedMovements, SEED_FARM_ID } from '../lib/seed'
+import { seedHarvestRules, seedMovements, SEED_FARM_ID } from '../lib/seed'
+import { appendRules } from '../lib/storage/harvest-rules'
 import { appendMovements, movementsForFarm } from '../lib/storage/movements'
 
 async function main() {
@@ -18,6 +19,7 @@ async function main() {
   const movements = seedMovements(new Date(), farmId)
 
   await appendMovements(movements)
+  await appendRules(seedHarvestRules(new Date(), farmId))
 
   const after = await movementsForFarm(farmId)
   console.log(

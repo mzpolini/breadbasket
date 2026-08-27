@@ -242,3 +242,43 @@ export type MessageRow = typeof messages.$inferSelect
 
 export type FarmRow = typeof farms.$inferSelect
 export type UserRow = typeof users.$inferSelect
+
+/**
+ * Harvest rules — what he expects to pick, on repeat.
+ *
+ * "Twenty pounds of watermelon every week through September" is one row, kept
+ * as his sentence, and never expanded into future movements (ADR 0001). A rule
+ * is a forecast; stock only appears in `movements` when he confirms a harvest.
+ *
+ * Append-only. A change, an end, or a re-affirmation at check-in is a new row
+ * pointing at the one it replaces. `created_at` is therefore also "when he last
+ * spoke about this", which is what the freshness clock reads.
+ */
+export const harvestRules = pgTable(
+  'harvest_rules',
+  {
+    id: text('id').primaryKey(),
+    farmId: text('farm_id').notNull(),
+    product: text('product').notNull(),
+    /** His own words. This is what "coming soon" shows a customer. */
+    rawPhrase: text('raw_phrase').notNull(),
+    amountValue: doublePrecision('amount_value'),
+    amountUnit: text('amount_unit'),
+    /** 'weekly' is the only structured value; anything else is kept verbatim. */
+    interval: text('interval').notNull(),
+    startsOn: text('starts_on'),
+    endsOn: text('ends_on'),
+    /** True when this row *is* the end of the rule it supersedes. */
+    ended: boolean('ended').notNull(),
+    supersedesId: text('supersedes_id'),
+    proposalId: text('proposal_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index('harvest_rules_farm_idx').on(table.farmId, table.product),
+    index('harvest_rules_proposal_idx').on(table.farmId, table.proposalId),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
+  ],
+)
+
+export type HarvestRuleRow = typeof harvestRules.$inferSelect

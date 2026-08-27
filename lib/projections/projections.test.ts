@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { balancesFrom, type Movement } from '../ledger'
-import { farmerInventory, publicListings } from './index'
+import { farmerInventory, publicListings, standListings } from './index'
 
 const WEEK = { from: '2026-08-01', to: '2026-08-07' }
 
@@ -176,5 +176,62 @@ describe('farmerInventory', () => {
     ])
 
     expect(row.attention).toBe('needs-weighing')
+  })
+})
+
+describe('standListings', () => {
+  const NOW = new Date('2026-08-27T12:00:00Z')
+  const at = (daysAgo: number) => new Date(NOW.getTime() - daysAgo * 86400000).toISOString()
+  const m = (over: Partial<Movement> & Pick<Movement, 'id' | 'product'>): Movement => ({
+    farmId: 'farm',
+    kind: 'trueup',
+    amount: { value: 10, unit: 'lb' },
+    measured: false,
+    state: 'confirmed',
+    source: 'farmer',
+    sessionId: 's',
+    occurredAt: at(1),
+    ...over,
+  })
+  const stand = (movements: Movement[]) =>
+    standListings(balancesFrom(movements, { now: NOW, freshnessDays: 7 }), { now: NOW })
+
+  it('shows a fresh position as available, with no quantity at all', () => {
+    const [row] = stand([m({ id: 'a', product: 'tomatoes' })])
+    expect(row).toEqual({ product: 'tomatoes', status: 'available', daysSinceSpoken: 1 })
+    expect(row).not.toHaveProperty('quantity')
+  })
+
+  it('keeps a flagged position on the stand, marked stale', () => {
+    const [row] = stand([m({ id: 'a', product: 'watermelon', occurredAt: at(20) })])
+    expect(row.status).toBe('stale')
+    expect(row.daysSinceSpoken).toBe(20)
+  })
+
+  it('withholds sold out and negative', () => {
+    expect(
+      stand([
+        m({ id: 'a', product: 'squash', amount: { value: 0, unit: 'lb' } }),
+        m({ id: 'b', product: 'peaches', kind: 'remove', amount: { value: 5, unit: 'lb' } }),
+      ]),
+    ).toEqual([])
+  })
+
+  it('never lists a forecast as available', () => {
+    expect(
+      stand([
+        m({
+          id: 'a',
+          product: 'sweet potatoes',
+          state: 'forecast',
+          window: { from: '2026-09-01', to: '2026-09-07' },
+        }),
+      ]),
+    ).toEqual([])
+  })
+
+  it('a presence claim with no number is still available', () => {
+    const [row] = stand([m({ id: 'a', product: 'collards', amount: undefined })])
+    expect(row.status).toBe('available')
   })
 })
