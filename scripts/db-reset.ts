@@ -7,11 +7,13 @@
  * vocabulary would leave a farm that knows his words but not his crops.
  */
 import { getDb } from '../lib/db'
-import { messages, movements, notes, vocabulary } from '../lib/db/schema'
+import { harvestRules, messages, movements, notes, vocabulary } from '../lib/db/schema'
 
 async function main() {
   const clearedMovements = await getDb().delete(movements).returning({ id: movements.id })
   const clearedTerms = await getDb().delete(vocabulary).returning({ term: vocabulary.term })
+  // Rules too: a cold start that still expects watermelon every week isn't cold.
+  const clearedRules = await getDb().delete(harvestRules).returning({ id: harvestRules.id })
   // The transcript goes too, or "knows nothing" is a lie: the agent would still
   // be handed six weeks of context about crops the ledger no longer has.
   const clearedMessages = await getDb().delete(messages).returning({ id: messages.id })
@@ -20,8 +22,9 @@ async function main() {
   const clearedNotes = await getDb().delete(notes).returning({ id: notes.id })
 
   console.log(
-    `cleared ${clearedMovements.length} movements, ${clearedTerms.length} learned words, ` +
-      `${clearedMessages.length} messages, and ${clearedNotes.length} notes — the farm now knows nothing`,
+    `cleared ${clearedMovements.length} movements, ${clearedRules.length} harvest rules, ` +
+      `${clearedTerms.length} learned words, ${clearedMessages.length} messages, and ` +
+      `${clearedNotes.length} notes — the farm now knows nothing`,
   )
 }
 
