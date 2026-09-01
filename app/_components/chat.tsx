@@ -2,10 +2,11 @@
 
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { commitProposed, commitRules } from '@/app/farm/[farmId]/actions'
 import { COUNT_UNIT, formatAmount } from '@/lib/ledger'
 import { EditSheet } from './edit-sheet'
+import { latestPending, type Pending } from '@/lib/agent/pending'
 import type { ProposedMovement, ProposedRule } from '@/lib/agent/tools'
 import type { FarmUIMessage } from '@/lib/agent/ui-message'
 
@@ -54,6 +55,8 @@ export function Chat({
   const [editing, setEditing] = useState<{ key: string; index: number } | null>(null)
   const [pending, startTransition] = useTransition()
   const scroller = useRef<HTMLDivElement>(null)
+  /** Publish signals already acted on, so a re-render cannot write twice. */
+  const relayed = useRef<Set<string>>(new Set())
 
   const busy = status === 'submitted' || status === 'streaming'
   const editingMovement = editing ? drafts[editing.key]?.[editing.index] : undefined
@@ -61,6 +64,45 @@ export function Chat({
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' })
   }, [messages, busy])
+
+  const publish = useCallback(
+    (target: Pending) =>
+      startTransition(async () => {
+        if (target.kind === 'movements') {
+          await commitProposed(farmId, target.movements, target.proposalId)
+        } else {
+          await commitRules(farmId, target.rules, target.proposalId)
+        }
+        setCommitted((s) => new Set(s).add(target.proposalId))
+      }),
+    [farmId],
+  )
+
+  /**
+   * A spoken yes, honoured.
+   *
+   * The agent cannot write; when he says "yes" it calls `publishPending`, and
+   * this publishes **the card on screen** through the same action the button
+   * uses. So the words and the tap end in exactly the same place, and nothing
+   * he hasn't seen read back can reach the ledger.
+   */
+  useEffect(() => {
+    const target = latestPending(messages, committed, drafts)
+
+    for (const message of messages) {
+      for (const part of message.parts) {
+        if (part.type !== 'tool-publishPending') continue
+
+        const signalId = (part as { toolCallId?: string }).toolCallId
+        if (!signalId || relayed.current.has(signalId)) continue
+
+        // Marked handled either way: with nothing pending there is nothing to
+        // publish, and re-checking on every render would never find one.
+        relayed.current.add(signalId)
+        if (target) publish(target)
+      }
+    }
+  }, [messages, committed, drafts, publish])
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -108,12 +150,7 @@ export function Chat({
                     setDrafts((d) => ({ ...d, [proposalId]: d[proposalId] ?? output.movements }))
                     setEditing({ key: proposalId, index })
                   }}
-                  onPublish={() =>
-                    startTransition(async () => {
-                      await commitProposed(farmId, movements, proposalId)
-                      setCommitted((s) => new Set(s).add(proposalId))
-                    })
-                  }
+                  onPublish={() => publish({ kind: 'movements', proposalId, movements })}
                   onFix={() => setInput('Not quite — ')}
                 />
               )
@@ -130,12 +167,7 @@ export function Chat({
                   rules={output.rules}
                   done={done}
                   pending={pending}
-                  onPublish={() =>
-                    startTransition(async () => {
-                      await commitRules(farmId, output.rules, proposalId)
-                      setCommitted((s) => new Set(s).add(proposalId))
-                    })
-                  }
+                  onPublish={() => publish({ kind: 'rules', proposalId, rules: output.rules })}
                   onFix={() => setInput('Not quite — ')}
                 />
               )
@@ -273,6 +305,9 @@ function describe(type: string): { label: string; detail: string; tone: 'ok' | '
   }
   if (type.includes('proposeHarvestRules')) {
     return { label: 'HEARD A RHYTHM', detail: 'a rule, not stock · nothing published yet', tone: 'ok' }
+  }
+  if (type.includes('publishPending')) {
+    return { label: 'YOU SAID YES', detail: 'putting up the card you were shown', tone: 'ok' }
   }
   if (type.includes('rememberAboutFarm')) {
     return { label: 'NOTED ABOUT THE FARM', detail: 'kept, never shown to buyers', tone: 'ok' }

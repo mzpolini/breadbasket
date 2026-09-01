@@ -30,6 +30,8 @@ The farmer talks to the app. The app writes to the spine. Every other surface re
 
 The farmer chats with an agent in natural language. The agent interprets what they said and offers a **read-back** — its restatement of what it heard. Nothing is written until the farmer approves it; an approved read-back is **published**.
 
+He approves either by tapping the card or by simply saying it's right — a spoken "yes" publishes. Both routes publish *the card he was shown*, edits included, and the agent still has no path of its own to the ledger: it can approve what he has seen read back, and nothing else. A qualified answer ("yes, but make it thirty") is a correction, not approval, and comes back as a fresh read-back.
+
 This slows the farmer down. We are choosing that on purpose. A farm inventory that is 80% accurate is worse than useless — it burns customer trust the first time someone drives out for tomatoes that aren't there. Trustworthy data beats fast data, and confirmation is the cheapest way to buy trust.
 
 Every claim the farmer makes carries two independent things:

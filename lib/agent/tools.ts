@@ -197,6 +197,27 @@ export function farmTools(farmId: string) {
       execute: async ({ rules }) => ({ proposed: rules.length, rules }),
     }),
 
+    publishPending: tool({
+      description:
+        'He has looked at the read-back and said it is right. Call this to put it up. ' +
+        'Only on an unambiguous yes to a read-back you have just shown him — never to ' +
+        'publish something he has not seen, and never on a qualified answer like ' +
+        '"yes, but make it thirty", which is a correction and needs a fresh read-back.',
+      inputSchema: z.object({}),
+      /**
+       * Writes nothing, and cannot. It is a signal to his screen, which then
+       * publishes **the card he is looking at** through the same server action
+       * the button uses — his edits included.
+       *
+       * This is a deliberate, narrow loosening of "only a tap publishes". The
+       * model still has no path to the ledger, and it still cannot compose what
+       * gets written: the only thing it can do is approve movements he has
+       * already seen read back. What it buys is that "yes" means yes, which is
+       * the difference between a check-in that happens and one that doesn't.
+       */
+      execute: async () => ({ publish: true }),
+    }),
+
     rememberAboutFarm: tool({
       description:
         'Keep something he said about how the farm runs — a picking rhythm, a ' +

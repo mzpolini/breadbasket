@@ -10,7 +10,7 @@ The shared language for the farm-inventory domain. Vocabulary only; no implement
 - **Movement** — a single claim the farmer made about stock: an add, remove, spoil, or true-up. The only source of truth; balances are derived.
 - **Position** — the derived balance of one product on one farm, folded from its movements. Never stored.
 - **Read-back** — the agent's restatement of what it heard, offered for approval. Nothing is written until the farmer approves it.
-- **Published** — a read-back the farmer approved, now written as movements. (Not "confirmed" — see below.)
+- **Published** — a read-back the farmer approved, now written as movements. He approves either by tapping the card or by saying so plainly; both publish the same card. (Not "confirmed" — see below.)
 
 ## The two axes of a claim
 
