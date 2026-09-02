@@ -410,3 +410,57 @@ describe('current stock is not weekly', () => {
     expect(balances).toHaveLength(2)
   })
 })
+
+/**
+ * "I'll have head lettuce in about two weeks" — from the beta, with no dates in
+ * it. A forecast without a window used to share a bucket with current stock,
+ * so an expected harvest could be added to what he actually had.
+ */
+describe('an undated forecast', () => {
+  const undated = (over: Partial<Movement> = {}): Movement => ({
+    id: 'f1',
+    farmId: 'farm',
+    product: 'head lettuce',
+    kind: 'trueup',
+    measured: false,
+    state: 'forecast',
+    source: 'farmer',
+    sessionId: 's',
+    occurredAt: '2026-09-01T20:34:00Z',
+    ...over,
+  })
+
+  const opts = { now: new Date('2026-09-02T12:00:00Z'), freshnessDays: 7 }
+
+  it('is its own position, never folded into stock on hand', () => {
+    const balances = balancesFrom(
+      [
+        undated({ id: 'f1', amount: { value: 30, unit: 'count' } }),
+        undated({
+          id: 'c1',
+          state: 'confirmed',
+          amount: { value: 12, unit: 'count' },
+          occurredAt: '2026-09-02T09:00:00Z',
+        }),
+      ],
+      opts,
+    )
+
+    expect(balances).toHaveLength(2)
+    const onHand = balances.find((b) => !b.forecast)
+    const coming = balances.find((b) => b.forecast)
+    expect(onHand?.balance).toMatchObject({ status: 'known', quantity: 12 })
+    expect(coming?.balance).toMatchObject({ status: 'known', quantity: 30 })
+  })
+
+  it('is marked as a forecast even with no window', () => {
+    const [balance] = balancesFrom([undated()], opts)
+    expect(balance.forecast).toBe(true)
+    expect(balance.window).toBeUndefined()
+  })
+
+  it('never goes live, so it cannot read as available', () => {
+    const [balance] = balancesFrom([undated()], opts)
+    expect(balance.balance.live).toBe(false)
+  })
+})

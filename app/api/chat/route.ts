@@ -8,6 +8,7 @@ import {
   validateUIMessages,
 } from 'ai'
 import { AGENT_INSTRUCTIONS } from '@/lib/agent/instructions'
+import { FARM_TIME_ZONE } from '@/lib/seed'
 import { farmTools } from '@/lib/agent/tools'
 import type { FarmUIMessage } from '@/lib/agent/ui-message'
 import { checkFarmAccess } from '@/lib/auth/current-user'
@@ -60,6 +61,28 @@ function standingFacts(notes: { note: string }[]): string {
   ].join('\n')
 }
 
+/**
+ * What day it is, on the farm.
+ *
+ * Without this the agent has no clock at all, and "head lettuce in about two
+ * weeks" came back as a forecast with no dates — which is a claim the ledger
+ * has nowhere to put. Both forms are given because it reasons in words and
+ * writes in `YYYY-MM-DD`.
+ */
+function todayOnTheFarm(now: Date): string {
+  const spoken = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: FARM_TIME_ZONE,
+  })
+  // en-CA gives YYYY-MM-DD, which is the shape every date field here expects.
+  const iso = now.toLocaleDateString('en-CA', { timeZone: FARM_TIME_ZONE })
+
+  return `\n\n## What day it is\n\nToday is ${spoken} — ${iso}. Every date you write comes off that.`
+}
+
 export async function POST(req: Request) {
   const { message, farmId }: { message: FarmUIMessage; farmId: string } = await req.json()
 
@@ -97,7 +120,10 @@ export async function POST(req: Request) {
     // agent must not have to *remember to ask* what it knows about the farm —
     // that is the failure this replaced. The window only holds a dozen turns, so
     // anything not carried here is gone by the next conversation.
-    instructions: AGENT_INSTRUCTIONS + standingFacts(await notesForFarm(farmId)),
+    instructions:
+      AGENT_INSTRUCTIONS +
+      todayOnTheFarm(new Date()) +
+      standingFacts(await notesForFarm(farmId)),
     messages: await convertToModelMessages(forModel),
     tools,
     // Enough to look at his stock, resolve his words, and read back — no more.

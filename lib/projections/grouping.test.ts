@@ -21,6 +21,7 @@ function row(over: Partial<InventoryRow> = {}): InventoryRow {
     confirmedAt: '2026-08-01T09:00:00Z',
     expiresAt: inHours(120),
     live: true,
+    forecast: false,
     attention: null,
     ...over,
   }
@@ -69,7 +70,7 @@ describe('groupInventory', () => {
 
   it('keeps forecasts out of every stock group', () => {
     const { forecast, live, lapsed } = group([
-      row({ window: { from: '2026-08-08', to: '2026-08-14' } }),
+      row({ forecast: true, window: { from: '2026-08-08', to: '2026-08-14' } }),
     ])
     expect(forecast).toHaveLength(1)
     expect(live).toEqual([])
@@ -79,7 +80,7 @@ describe('groupInventory', () => {
   it('ranks a forecast above every other reason to group it', () => {
     // A forecast that has also lapsed is still a forecast — it was never stock.
     const { forecast, lapsed } = group([
-      row({ window: { from: '2026-08-08', to: '2026-08-14' }, live: false }),
+      row({ forecast: true, window: { from: '2026-08-08', to: '2026-08-14' }, live: false }),
     ])
     expect(forecast).toHaveLength(1)
     expect(lapsed).toEqual([])
@@ -97,7 +98,7 @@ describe('groupInventory', () => {
       row({ product: 'b', expiresAt: inHours(5) }),
       row({ product: 'c', attention: 'negative' }),
       row({ product: 'd', live: false }),
-      row({ product: 'e', window: { from: '2026-08-08', to: '2026-08-14' } }),
+      row({ product: 'e', forecast: true, window: { from: '2026-08-08', to: '2026-08-14' } }),
     ]
     const grouped = group(rows)
     const all = [
@@ -113,5 +114,20 @@ describe('groupInventory', () => {
 
   it('treats a crop with no expiry as live rather than expiring', () => {
     expect(group([row({ expiresAt: null })]).live).toHaveLength(1)
+  })
+})
+
+describe('an undated forecast', () => {
+  /**
+   * "I'll have head lettuce in about two weeks" — a real claim from the beta,
+   * with no dates in it. It used to land in `lapsed` and read to him as stale
+   * stock, which is the opposite of what he said.
+   */
+  it('is something coming, not something stale', () => {
+    const { forecast, lapsed } = group([
+      row({ product: 'head lettuce', forecast: true, window: undefined, live: false, confirmedAt: null }),
+    ])
+    expect(forecast.map((r) => r.product)).toEqual(['head lettuce'])
+    expect(lapsed).toEqual([])
   })
 })

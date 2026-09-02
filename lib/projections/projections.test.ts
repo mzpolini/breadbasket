@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { balancesFrom, type Movement } from '../ledger'
-import { farmerInventory, publicListings, standListings } from './index'
+import { farmerInventory, forecastListings, publicListings, standListings } from './index'
 
 const WEEK = { from: '2026-08-01', to: '2026-08-07' }
 
@@ -233,5 +233,37 @@ describe('standListings', () => {
   it('a presence claim with no number is still available', () => {
     const [row] = stand([m({ id: 'a', product: 'collards', amount: undefined })])
     expect(row.status).toBe('available')
+  })
+})
+
+describe('an undated forecast on the two surfaces', () => {
+  const NOW = new Date('2026-09-02T12:00:00Z')
+  const lettuce: Movement = {
+    id: 'f1',
+    farmId: 'farm',
+    product: 'head lettuce',
+    kind: 'trueup',
+    measured: false,
+    state: 'forecast',
+    source: 'farmer',
+    sessionId: 's',
+    occurredAt: '2026-09-01T20:34:00Z',
+  }
+  const balances = () => balancesFrom([lettuce], { now: NOW, freshnessDays: 7 })
+
+  it('is never offered as available now', () => {
+    expect(standListings(balances(), { now: NOW })).toEqual([])
+  })
+
+  it('shows under coming soon, with no dates rather than not at all', () => {
+    const [listing] = forecastListings(balances())
+    expect(listing.product).toBe('head lettuce')
+    expect(listing.window).toBeUndefined()
+  })
+
+  it('reaches his own view as a forecast', () => {
+    const [row] = farmerInventory(balances(), { now: NOW })
+    expect(row.forecast).toBe(true)
+    expect(row.live).toBe(false)
   })
 })

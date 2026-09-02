@@ -250,7 +250,9 @@ export function StockList({
                   className="meta text-[12.5px] leading-[1.4]"
                   style={{ color: 'var(--color-accent-2-700)' }}
                 >
-                  {row.window && `${short(row.window.from)}–${short(row.window.to)} · `}
+                  {row.window
+                    ? `${short(row.window.from)}–${short(row.window.to)} · `
+                    : 'no date given · '}
                   shown as coming, never as stock
                 </span>
               </div>

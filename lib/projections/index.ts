@@ -96,8 +96,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000
  * withheld — neither is an offer.
  */
 export function standListings(balances: ProductBalance[], opts: ProjectionOptions): StandListing[] {
-  return balances.flatMap(({ product, window, balance }) => {
-    if (window || balance.confirmedAt === null) return []
+  return balances.flatMap(({ product, forecast, balance }) => {
+    if (forecast || balance.confirmedAt === null) return []
     if (balance.status === 'known' && balance.quantity <= 0) return []
 
     return [
@@ -121,7 +121,8 @@ export function lastSpokenAt(balances: ProductBalance[]): string | null {
 export type ForecastListing = {
   product: string
   quantity: Quantity | null
-  window: Window
+  /** Absent when he said something was coming without naming when. */
+  window?: Window
 }
 
 /**
@@ -130,15 +131,15 @@ export type ForecastListing = {
  * to see it, provided it can never be mistaken for stock on hand.
  */
 export function forecastListings(balances: ProductBalance[]): ForecastListing[] {
-  return balances.flatMap(({ product, window, balance }) => {
-    if (!window || balance.live) return []
+  return balances.flatMap(({ product, forecast, window, balance }) => {
+    if (!forecast) return []
 
     return [
       {
         product,
         quantity:
           balance.status === 'known' ? { value: balance.quantity, unit: balance.unit } : null,
-        window,
+        ...(window ? { window } : {}),
       },
     ]
   })
@@ -157,7 +158,9 @@ export type InventoryRow = {
   expiresAt: string | null
   /** Lapsed rows stay in his view; only the public page drops them. */
   live: boolean
-  /** Absent for current stock; present only for a claim about a future period. */
+  /** A claim about the future. Never stock, whether or not he gave dates. */
+  forecast: boolean
+  /** The period a forecast is about, when he gave one. */
   window?: Window
   attention: Attention | null
 }
@@ -183,7 +186,7 @@ export function farmerInventory(
 ): InventoryRow[] {
   const threshold = opts.weighAfterEstimates ?? DEFAULT_WEIGH_AFTER
 
-  return balances.map(({ product, window, balance }) => ({
+  return balances.map(({ product, forecast, window, balance }) => ({
     product,
     quantity:
       balance.status === 'known' ? { value: balance.quantity, unit: balance.unit } : null,
@@ -192,6 +195,7 @@ export function farmerInventory(
     confirmedAt: balance.confirmedAt,
     expiresAt: balance.expiresAt,
     live: balance.live,
+    forecast,
     window,
     attention: attentionFor(balance, threshold),
   }))
@@ -273,7 +277,9 @@ function groupOf(
   now: Date,
   withinHours: number,
 ): keyof InventoryGroups {
-  if (row.window) return 'forecast'
+  // Forecast-ness, not dates. An undated "lettuce in a couple of weeks" fell
+  // through to `lapsed` and read to him as stale stock.
+  if (row.forecast) return 'forecast'
   if (row.attention === 'unit-conflict' || row.attention === 'negative') return 'cantTotal'
   if (!row.live) return 'lapsed'
   if (expiringWithin(row.expiresAt, now, withinHours)) return 'expiringSoon'

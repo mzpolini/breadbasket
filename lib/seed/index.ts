@@ -41,6 +41,14 @@ export const SEED_FARM_SECRET = 'seed-farm-preview'
 export const FRESHNESS_DAYS = 7
 
 /**
+ * The farm's clock. Every date the agent works out — "in two weeks", "through
+ * September" — is relative to this, and a farmer at dusk in Maryland is not in
+ * UTC. One zone for now because there is one farm; it belongs on the farm row
+ * the moment there are two.
+ */
+export const FARM_TIME_ZONE = 'America/New_York'
+
+/**
  * One standing harvest rule, so the stand's "coming soon" and the stock view's
  * standing section have something to show. This is the sentence that broke the
  * first beta.

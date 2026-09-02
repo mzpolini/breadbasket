@@ -148,7 +148,7 @@ function OneOff({ forecast }: { forecast: ForecastListing }) {
         {forecast.product}
       </span>
       <span className="meta text-[13px] leading-[1.5]" style={{ color: 'var(--color-accent-2-700)' }}>
-        expected {shortRange(forecast.window)}
+        {forecast.window ? `expected ${shortRange(forecast.window)}` : 'expected soon'}
       </span>
     </div>
   )
