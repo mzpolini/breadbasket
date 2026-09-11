@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { balancesFrom, foldBalance, type FoldOptions } from './index'
-import type { KnownBalance, Movement } from './types'
+import type { KnownBalance, Movement, MovementKind } from './types'
 
 const WEEK = { from: '2026-08-01', to: '2026-08-07' }
 
@@ -93,7 +93,8 @@ describe('foldBalance', () => {
       movement({ id: 'm1', kind: 'add', amount: { value: 40, unit: 'lb' } }),
       movement({
         id: 'm2',
-        kind: 'spoil',
+        kind: 'remove',
+        reason: 'spoiled',
         amount: { value: 15, unit: 'lb' },
         occurredAt: '2026-08-02T08:00:00Z',
       }),
@@ -462,5 +463,131 @@ describe('an undated forecast', () => {
   it('never goes live, so it cannot read as available', () => {
     const [balance] = balancesFrom([undated()], opts)
     expect(balance.balance.live).toBe(false)
+  })
+})
+
+/**
+ * "Deer ate them" carries no number, because that is how the sentence is
+ * spoken. The presence rule above — no amount means he still has some — was
+ * written for "I've got collards" and reading a removal that way left the
+ * figure standing and the clock freshly reset, so the crop came back stronger
+ * than before (ADR 0002).
+ */
+describe('a position he has emptied', () => {
+  it('empties a position that had a figure when he gives no number', () => {
+    const balance = foldBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: { value: 10, unit: 'lb' } }),
+      movement({
+        id: 'm2',
+        kind: 'remove',
+        amount: undefined,
+        reason: 'wildlife',
+        occurredAt: '2026-08-02T09:00:00Z',
+      }),
+    ], AT_NOON)
+
+    expect(balance.status).toBe('none')
+  })
+
+  it('empties a position that never had a figure at all', () => {
+    // Most of the farm is like this: "I've got collards", and then they're gone.
+    const balance = foldBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: undefined }),
+      movement({
+        id: 'm2',
+        kind: 'remove',
+        amount: undefined,
+        occurredAt: '2026-08-02T09:00:00Z',
+      }),
+    ], AT_NOON)
+
+    expect(balance.status).toBe('none')
+  })
+
+  it('fills up again when he picks more', () => {
+    // Emptying is not sticky: the deer got them, then he picked on Friday.
+    const balance = knownBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: { value: 10, unit: 'lb' } }),
+      movement({
+        id: 'm2',
+        kind: 'remove',
+        amount: undefined,
+        reason: 'wildlife',
+        occurredAt: '2026-08-02T09:00:00Z',
+      }),
+      movement({
+        id: 'm3',
+        kind: 'add',
+        amount: { value: 20, unit: 'lb' },
+        occurredAt: '2026-08-02T10:00:00Z',
+      }),
+    ])
+
+    // 20, not 30: what he emptied does not come back with the new pick.
+    expect(balance.quantity).toBe(20)
+  })
+
+  it('is present again when he says he has some without a number', () => {
+    const balance = foldBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: undefined }),
+      movement({ id: 'm2', kind: 'remove', amount: undefined, occurredAt: '2026-08-02T09:00:00Z' }),
+      movement({ id: 'm3', kind: 'trueup', amount: undefined, occurredAt: '2026-08-02T10:00:00Z' }),
+    ], AT_NOON)
+
+    expect(balance.status).toBe('present')
+  })
+
+  it('still subtracts when he does give a number', () => {
+    const balance = knownBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: { value: 10, unit: 'lb' } }),
+      movement({
+        id: 'm2',
+        kind: 'remove',
+        amount: { value: 4, unit: 'lb' },
+        occurredAt: '2026-08-02T09:00:00Z',
+      }),
+    ])
+
+    expect(balance.quantity).toBe(6)
+  })
+
+  it('escapes a unit conflict, because he has said there is nothing to total', () => {
+    const balance = foldBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: { value: 10, unit: 'lb' } }),
+      movement({
+        id: 'm2',
+        kind: 'add',
+        amount: { value: 2, unit: 'box' },
+        occurredAt: '2026-08-02T08:00:00Z',
+      }),
+      movement({ id: 'm3', kind: 'remove', amount: undefined, occurredAt: '2026-08-02T09:00:00Z' }),
+    ], AT_NOON)
+
+    expect(balance.status).toBe('none')
+  })
+
+  it('counts as him having spoken, like any other claim', () => {
+    const balance = foldBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: { value: 10, unit: 'lb' } }),
+      movement({ id: 'm2', kind: 'remove', amount: undefined, occurredAt: '2026-08-02T09:00:00Z' }),
+    ], AT_NOON)
+
+    expect(balance.confirmedAt).toBe('2026-08-02T09:00:00Z')
+  })
+
+  it('reduces on a movement written before spoil was a reason rather than a kind', () => {
+    // Old rows exist. A kind the fold no longer names must still take stock out
+    // rather than fall through and leave it standing.
+    const balance = foldBalance([
+      movement({ id: 'm1', kind: 'trueup', amount: { value: 10, unit: 'lb' } }),
+      movement({
+        id: 'm2',
+        kind: 'spoil' as MovementKind,
+        amount: { value: 4, unit: 'lb' },
+        occurredAt: '2026-08-02T09:00:00Z',
+      }),
+    ], AT_NOON)
+
+    expect(balance.status === 'known' && balance.quantity).toBe(6)
   })
 })

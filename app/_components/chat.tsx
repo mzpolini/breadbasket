@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { commitProposed, commitRules } from '@/app/farm/[farmId]/actions'
 import { COUNT_UNIT, formatAmount } from '@/lib/ledger'
 import { EditSheet } from './edit-sheet'
-import { latestPending, type Pending } from '@/lib/agent/pending'
+import { publishOnSignal, type Pending } from '@/lib/agent/pending'
 import type { ProposedMovement, ProposedRule } from '@/lib/agent/tools'
 import type { FarmUIMessage } from '@/lib/agent/ui-message'
 
@@ -85,23 +85,18 @@ export function Chat({
    * this publishes **the card on screen** through the same action the button
    * uses. So the words and the tap end in exactly the same place, and nothing
    * he hasn't seen read back can reach the ledger.
+   *
+   * Which yes counts is decided in `publishOnSignal`, not here. This effect
+   * re-runs on a reload with the whole transcript restored, and the rule that
+   * only the live turn can publish is what stops that reload acting on every
+   * yes the conversation has ever contained (ADR 0003).
    */
   useEffect(() => {
-    const target = latestPending(messages, committed, drafts)
+    const relay = publishOnSignal(messages, committed, drafts, relayed.current)
+    if (!relay) return
 
-    for (const message of messages) {
-      for (const part of message.parts) {
-        if (part.type !== 'tool-publishPending') continue
-
-        const signalId = (part as { toolCallId?: string }).toolCallId
-        if (!signalId || relayed.current.has(signalId)) continue
-
-        // Marked handled either way: with nothing pending there is nothing to
-        // publish, and re-checking on every render would never find one.
-        relayed.current.add(signalId)
-        if (target) publish(target)
-      }
-    }
+    relayed.current.add(relay.signalId)
+    publish(relay.target)
   }, [messages, committed, drafts, publish])
 
   return (
@@ -384,6 +379,21 @@ function ReadBackCard({
   )
 }
 
+/**
+ * How a loss reads back to him, in his register rather than ours. He never sees
+ * the word "wildlife" — he sees what he told us.
+ */
+const LOSS_WORD: Record<NonNullable<ProposedMovement['reason']>, string> = {
+  sold: 'sold',
+  spoiled: 'went bad',
+  wildlife: 'lost to deer or birds',
+  pests: 'lost to pests',
+  weather: 'lost to weather',
+  donated: 'given away',
+  'own-use': 'kept back',
+  other: 'gone',
+}
+
 function Row({
   movement,
   onEdit,
@@ -391,19 +401,19 @@ function Row({
   movement: ProposedMovement
   onEdit?: () => void
 }) {
-  const soldOut = movement.kind === 'trueup' && movement.amountValue === 0
+  // A reduction he gave no number for empties the position (ADR 0002), so the
+  // row has to read as the outcome — "none left" — and not as a change. He
+  // approves what this says; if it says anything else the ledger and the card
+  // disagree, which is the failure the read-back exists to prevent.
+  const emptied = movement.kind === 'remove' && movement.amountValue === null
+  const nothingLeft = emptied || (movement.kind === 'trueup' && movement.amountValue === 0)
+  const lossWord = movement.reason ? LOSS_WORD[movement.reason] : 'gone'
   const kindWord =
-    movement.kind === 'trueup'
-      ? 'total'
-      : movement.kind === 'add'
-        ? 'added'
-        : movement.kind === 'remove'
-          ? 'sold'
-          : 'spoiled'
+    movement.kind === 'trueup' ? 'total' : movement.kind === 'add' ? 'added' : lossWord
 
   // Formatted the same way the ledger will format it once committed, so the
   // read-back and the stock page can never word the same figure differently.
-  const figure = soldOut
+  const figure = nothingLeft
     ? 'none left'
     : movement.amountValue === null
       ? 'available'
@@ -414,15 +424,17 @@ function Row({
 
   const meta = movement.forecast
     ? `not yet · ready ${movement.windowFrom ?? 'later'}`
-    : soldOut
-      ? 'sold out'
-      : movement.amountValue === null
-        ? `${kindWord} · no amount, and that's fine`
-        : `${kindWord} · ${movement.measured ? 'weighed' : 'estimated'}`
+    : emptied
+      ? `${lossWord} · off your page`
+      : nothingLeft
+        ? 'sold out'
+        : movement.amountValue === null
+          ? `${kindWord} · no amount, and that's fine`
+          : `${kindWord} · ${movement.measured ? 'weighed' : 'estimated'}`
 
   const figureColour = movement.forecast
     ? 'var(--color-accent-2-700)'
-    : soldOut
+    : nothingLeft
       ? 'color-mix(in srgb, var(--color-text) 45%, transparent)'
       : movement.amountValue === null
         ? 'var(--color-accent-2-700)'

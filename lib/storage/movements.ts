@@ -3,11 +3,23 @@ import { getDb } from '../db'
 import { movements, type MovementRow } from '../db/schema'
 import {
   COUNT_UNIT,
+  type LossReason,
   type Movement,
   type MovementKind,
   type MovementSource,
   type MovementState,
 } from '../ledger/types'
+
+/**
+ * `spoil` was a kind before it was a reason. Old rows still say so, and a row
+ * whose kind the fold no longer names must keep reducing stock rather than
+ * quietly asserting presence — so the translation happens here, at the edge,
+ * and nothing above this line has to know the history.
+ */
+function toKind(kind: string): Pick<Movement, 'kind' | 'reason'> {
+  if (kind === 'spoil') return { kind: 'remove', reason: 'spoiled' }
+  return { kind: kind as MovementKind }
+}
 
 /**
  * The only way movements reach or leave storage.
@@ -24,7 +36,8 @@ export function toMovement(row: MovementRow): Movement {
     farmId: row.farmId,
     product: row.product,
     ...(row.rawPhrase ? { rawPhrase: row.rawPhrase } : {}),
-    kind: row.kind as MovementKind,
+    ...toKind(row.kind),
+    ...(row.reason ? { reason: row.reason as LossReason } : {}),
     // Keyed off the *value* alone. A row with a number and no unit is a bare
     // count, not a corrupt row — requiring the pair is how the number used to
     // get thrown away on the way back out.
@@ -55,6 +68,7 @@ export function toRow(movement: Movement): MovementRow {
     product: movement.product,
     rawPhrase: movement.rawPhrase ?? null,
     kind: movement.kind,
+    reason: movement.reason ?? null,
     amountValue: movement.amount?.value ?? null,
     amountUnit: movement.amount?.unit ?? null,
     measured: movement.measured,

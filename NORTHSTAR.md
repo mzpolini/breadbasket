@@ -87,6 +87,36 @@ For the POC we only structure **weekly**. Anything else the farmer says — "Tue
 
 **Flag, don't delete — permanent.** Nothing ever disappears from the record or the page because a timer went off. Stale stock is flagged, shown as stale, and stays until the farmer resolves it. "Spoiled" is something only the farmer records.
 
+### Taking something off the page
+
+The second beta tried to remove okra and couldn't. Two things were wrong, and the second is the serious one.
+
+A removal spoken without a number — "deer ate them", "sold out", "gave the rest away" — left the figure standing and reset the freshness clock, so the crop came back *stronger* than before. **Decided (ADR 0002): a removal with no number empties the position.** If it's only some, he says a number; the read-back now shows the resulting balance rather than the change, so what he approves is the outcome.
+
+The other thing: nine records he never approved. A card he had corrected got replayed into his ledger minutes later. The ledger stays append-only for everything he actually said, and those rows are deleted rather than compensated (ADR 0003) — his history should not claim he told us something he didn't.
+
+**Deer are not spoilage.** "Spoiled" meant food that went bad in a crate; a crop eaten in the field never reached one. Pests, wildlife and weather are ordinary on a farm, so a removal now carries a **loss reason** — sold, spoiled, wildlife, pests, weather, donated, own use — recorded alongside his own sentence. The reason never changes the arithmetic and never reaches a customer. A wildlife or weather loss is also the one case where the agent asks one line about what comes next: deer in the okra usually means the planting is gone, not just the crate.
+
+> ❓ **FOUNDER 6 — Is "no number means all of it" how your farmers talk?**
+> When one of them says "the deer got the okra" or "we're out of collards", is that always the whole lot? We've made that the rule, and made him give a number when it's only part — but you'd know if there's a common phrasing that means "most of it" and would now get read as "all of it".
+>
+> *Answer:*
+
+> ❓ **FOUNDER 7 — Is documented crop loss worth anything to your farmers?**
+> We're about to start recording *why* stock went, not just that it did. Kept honestly, that's a season's record of what deer, weather and pests cost a farm — the kind of thing disaster programmes and insurers ask for. Is that something they'd use, or are we the wrong people to be holding it?
+>
+> *Answer:*
+
+### Varieties
+
+He said he had heirloom tomatoes, then named German Johnson and Brandywine. He said bell peppers, then green, red, yellow and orange. The system heard six unrelated crops, and when he asked it to rename two of them it made two more — the farm now carries five tomato products for two plants.
+
+Worse, it made his check-in a chore: reconfirming "peppers" meant naming all four colours.
+
+**Decided: a claim is about a crop and, where he named one, a variety.** Varieties are learned only from what he tells us — there is no canonical produce list and no setup step. A customer sees one line per crop with the varieties named under it, because "have they got bell peppers?" is one question. Speaking about the crop alone refreshes everything under it; a quantity given at crop level stays there and is never split across varieties — when we asked whether 10 lb was split or combined, he said combined, and that is the answer to keep.
+
+Renaming a crop is a **merge**: two names taught to mean one thing, folding their claims together. Nothing in the ledger is ever rewritten.
+
 ### The weekly check-in
 
 The farmer is responsible for chatting with the app **at least once per week. No maximum.** More often is always better.
@@ -102,6 +132,8 @@ The check-in is the ritual that makes everything else work. It's where:
 
 > ❓ **FOUNDER 2 — Would your farmers respond to a reminder, and on what channel?**
 > Right now the only prompt to check in is that their public page visibly goes stale. Should we also text them? Email? Would a reminder feel helpful or like nagging? Is once a week the right rhythm to ask for?
+>
+> Two shapes, if the answer is yes. **One message a week, about the page:** "three things go grey on your page tomorrow — tell me what's still there." Or **a ping per crop** as each one ages. We'd pick the first, on the grounds that per-crop pings across a whole farm is how a farmer learns to mute you — but you know them and we don't.
 >
 > *Answer:*
 
@@ -148,7 +180,9 @@ Considered and dropped. This document *is* the board. Questions live here, answe
 
 ## This week
 
-**Primary goal:** close the gap beta exposed, so a farmer can describe a whole season in one conversation — and get the founder's answers moving.
+**Primary goal:** make removal trustworthy, then make varieties speakable — and get the founder's answers moving.
+
+The second beta's four reports split cleanly in two, and they ship in that order. First, integrity: a removal that removes, a ledger that only ever holds what he approved, and his live record put right. Then the product model: crops with varieties under them. The first is dangerous while it is broken; the second is only awkward.
 
 - [x] Decide cadence semantics — one standing rule (ADR 0001)
 - [x] Define harvest cadence as a product concept (above, and `CONTEXT.md`)
@@ -156,6 +190,13 @@ Considered and dropped. This document *is* the board. Questions live here, answe
 - [x] Write the seven-day rule as temporary, flag-don't-delete as permanent
 - [x] Decide the success metric
 - [x] Replace the in-app question board with this doc
+- [x] Diagnose the failed okra removal — two bugs, one of them writing unapproved records
+- [x] Decide removal semantics — no number means all of it (ADR 0002)
+- [x] Decide loss reasons — wildlife, weather and pests are ordinary, not spoilage
+- [x] Decide the variety model — crop and variety, freshness rolls up, quantity does not
+- [ ] Ship the integrity pass: removals that empty, the publish guard, `(farm_id, proposal_id)` uniqueness, the Sold-out button, and the live-data cleanup (ADR 0003)
+- [ ] Sort the stand so stale reads below live — it currently floats to the top by accident
+- [ ] Ship crops with varieties, and merge the five tomato products back into two
 - [ ] Share this doc and [`DESIGN.md`](./DESIGN.md) with the founder
 - [x] Build the minimal harvest-rule store: parse "X every week through Y" into a rule, read it back; anything unparseable kept verbatim as a note
 - [x] Split the farm stand into available now / coming soon, with the four labels and the freshness line; remove quantities

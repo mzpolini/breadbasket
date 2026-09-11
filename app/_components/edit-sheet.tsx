@@ -14,11 +14,40 @@ import type { ProposedMovement } from '@/lib/agent/tools'
  * that assumption costs if wrong.
  */
 
-const KINDS: { value: ProposedMovement['kind']; label: string; hint: string }[] = [
-  { value: 'trueup', label: 'That’s my total', hint: 'what I have altogether' },
-  { value: 'add', label: 'That came in on top', hint: 'new stock, added to what was there' },
-  { value: 'remove', label: 'I sold that', hint: 'went out — market, order, gave it away' },
-  { value: 'spoil', label: 'I lost that', hint: 'rot, weather, spoilage' },
+const KINDS: {
+  value: ProposedMovement['kind']
+  reason: ProposedMovement['reason']
+  label: string
+  hint: string
+}[] = [
+  { value: 'trueup', reason: null, label: 'That’s my total', hint: 'what I have altogether' },
+  {
+    value: 'add',
+    reason: null,
+    label: 'That came in on top',
+    hint: 'new stock, added to what was there',
+  },
+  { value: 'remove', reason: 'sold', label: 'I sold that', hint: 'went out — market or order' },
+  { value: 'remove', reason: 'wildlife', label: 'I lost that', hint: 'deer, weather, pests, rot' },
+]
+
+/**
+ * Why it went, once he has said it went.
+ *
+ * Shown only for a reduction, because a reason on a total means nothing. Deer
+ * and weather are ordinary on a farm rather than edge cases, which is the whole
+ * reason this row exists — "the deer ate them" used to have to be filed as
+ * spoilage, and his record then claimed food had rotted.
+ */
+const REASONS: { value: NonNullable<ProposedMovement['reason']>; label: string }[] = [
+  { value: 'sold', label: 'sold' },
+  { value: 'spoiled', label: 'went bad' },
+  { value: 'wildlife', label: 'deer or birds' },
+  { value: 'pests', label: 'pests' },
+  { value: 'weather', label: 'weather' },
+  { value: 'donated', label: 'gave it away' },
+  { value: 'own-use', label: 'kept it' },
+  { value: 'other', label: 'something else' },
 ]
 
 export function EditSheet({
@@ -35,6 +64,7 @@ export function EditSheet({
 
   const changed =
     draft.kind !== movement.kind ||
+    draft.reason !== movement.reason ||
     draft.amountValue !== movement.amountValue ||
     draft.measured !== movement.measured ||
     draft.product !== movement.product
@@ -87,12 +117,23 @@ export function EditSheet({
 
         <div className="mt-5 flex flex-col gap-2">
           {KINDS.map((kind) => {
-            const selected = draft.kind === kind.value
+            const selected =
+              draft.kind === kind.value &&
+              (kind.value !== 'remove' || Boolean(draft.reason) === Boolean(kind.reason))
             return (
               <button
-                key={kind.value}
+                key={`${kind.value}-${kind.reason ?? 'none'}`}
                 type="button"
-                onClick={() => setDraft({ ...draft, kind: kind.value })}
+                onClick={() =>
+                  setDraft({
+                    ...draft,
+                    kind: kind.value,
+                    // Keep a reason he has already picked when it still fits the
+                    // kind; only fall back to the button's own.
+                    reason:
+                      kind.value === 'remove' ? (draft.reason ?? kind.reason) : null,
+                  })
+                }
                 className="flex flex-col items-start rounded-[18px] px-4 py-3 text-left"
                 style={{
                   background: selected ? 'var(--color-accent-200)' : 'var(--color-surface)',
@@ -110,6 +151,28 @@ export function EditSheet({
             )
           })}
         </div>
+
+        {draft.kind === 'remove' && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {REASONS.map((reason) => {
+              const selected = draft.reason === reason.value
+              return (
+                <button
+                  key={reason.value}
+                  type="button"
+                  onClick={() => setDraft({ ...draft, reason: reason.value })}
+                  className="rounded-full px-3 py-2 text-[14px]"
+                  style={{
+                    background: selected ? 'var(--color-accent-200)' : 'var(--color-surface)',
+                    border: `1px solid ${selected ? 'var(--color-accent)' : 'var(--color-divider)'}`,
+                  }}
+                >
+                  {reason.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         {editingNumber ? (
           <div className="mt-5 flex flex-col gap-3">

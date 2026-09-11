@@ -19,9 +19,11 @@ export type FoldOptions = {
 type Position = {
   quantity: number
   estimateDebt: number
+  /** He said it is gone. Set by a reduction with no number; any later claim lifts it. */
+  cleared: boolean
 }
 
-const EMPTY: Position = { quantity: 0, estimateDebt: 0 }
+const EMPTY: Position = { quantity: 0, estimateDebt: 0, cleared: false }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
@@ -29,7 +31,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000
  * Folds movements into the position they describe.
  */
 export function foldBalance(movements: Movement[], opts: FoldOptions): Balance {
-  const { quantity, estimateDebt } = chronological(movements).reduce(applyMovement, EMPTY)
+  const { quantity, estimateDebt, cleared } = chronological(movements).reduce(applyMovement, EMPTY)
   const units = distinctUnits(movements)
 
   const confirmedAt = latestConfirmedAt(movements)
@@ -45,6 +47,13 @@ export function foldBalance(movements: Movement[], opts: FoldOptions): Balance {
     expiresAt,
     live,
     lastMeasuredAt: latestMeasuredAt(movements),
+  }
+
+  // Decided before units on purpose: he has said there is nothing there, so
+  // there is nothing to total and a disagreement about units no longer matters.
+  // It is also the only way out of a unit conflict that isn't a true-up.
+  if (cleared) {
+    return { status: 'none', ...freshness }
   }
 
   // No movement ever carried an amount, so there is no figure to report — only
@@ -157,30 +166,51 @@ function latestMeasuredAt(movements: Movement[]): string | null {
   return measured.length === 0 ? null : measured.reduce((a, b) => (a > b ? a : b))
 }
 
+/**
+ * Anything that is not an addition or an absolute takes stock out.
+ *
+ * Written as "not add, not trueup" rather than as a list of reductions so that
+ * a row carrying a kind this version no longer names — `spoil`, before it
+ * became a reason — still reduces instead of falling through and leaving the
+ * stock standing. Silently keeping food that a farmer said was gone is the
+ * expensive direction to be wrong in.
+ */
+function reduces(kind: Movement['kind']): boolean {
+  return kind !== 'add' && kind !== 'trueup'
+}
+
 function applyMovement(position: Position, movement: Movement): Position {
   const estimateDebt = movement.measured ? position.estimateDebt : position.estimateDebt + 1
 
-  // "I've got collards" asserts he still has some, not how many. It refreshes
-  // confirmation and counts toward drift, but must not disturb the figure.
   if (movement.amount === undefined) {
-    return { quantity: position.quantity, estimateDebt }
+    // "The deer ate them" carries no number, because that is how it is said. A
+    // reduction with nothing to subtract empties the position outright (ADR
+    // 0002) — reading it as presence left the figure standing and the freshness
+    // clock freshly reset, so the crop came back stronger than before.
+    if (reduces(movement.kind)) {
+      return { quantity: 0, estimateDebt, cleared: true }
+    }
+
+    // "I've got collards" asserts he still has some, not how many. It refreshes
+    // confirmation and counts toward drift, but must not disturb the figure.
+    return { quantity: position.quantity, estimateDebt, cleared: false }
   }
 
   const { value } = movement.amount
 
-  switch (movement.kind) {
-    // An absolute, not a delta: a measurement outranks whatever the running
-    // arithmetic had drifted to. Because it replaces the position outright it
-    // also replaces the accumulated drift — so debt restarts from this movement
-    // alone, which is zero when he actually weighed it.
-    case 'trueup':
-      return { quantity: value, estimateDebt: movement.measured ? 0 : 1 }
-    case 'remove':
-    case 'spoil':
-      return { quantity: position.quantity - value, estimateDebt }
-    case 'add':
-      return { quantity: position.quantity + value, estimateDebt }
+  // An absolute, not a delta: a measurement outranks whatever the running
+  // arithmetic had drifted to. Because it replaces the position outright it
+  // also replaces the accumulated drift — so debt restarts from this movement
+  // alone, which is zero when he actually weighed it.
+  if (movement.kind === 'trueup') {
+    return { quantity: value, estimateDebt: movement.measured ? 0 : 1, cleared: false }
   }
+
+  if (reduces(movement.kind)) {
+    return { quantity: position.quantity - value, estimateDebt, cleared: false }
+  }
+
+  return { quantity: position.quantity + value, estimateDebt, cleared: false }
 }
 
 export type { Movement, Balance, Window, Amount } from './types'

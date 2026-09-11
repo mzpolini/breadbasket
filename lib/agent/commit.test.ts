@@ -17,6 +17,7 @@ const proposal = (over: Partial<ProposedMovement> = {}): ProposedMovement => ({
   heardAs: 'maters',
   rawPhrase: 'about 30 maters',
   kind: 'trueup',
+  reason: null,
   amountValue: 30,
   amountUnit: 'lb',
   measured: false,
@@ -34,6 +35,33 @@ const ctx = {
 }
 
 describe('toMovements', () => {
+  it('keeps why the stock went', () => {
+    const [movement] = toMovements(
+      [proposal({ kind: 'remove', reason: 'wildlife', rawPhrase: 'deer ate them' })],
+      ctx,
+    )
+    expect(movement.reason).toBe('wildlife')
+  })
+
+  it('leaves a reduction he gave no number for without one, rather than inventing a unit', () => {
+    // "The deer got the okra" empties the position. A true-up to zero in a unit
+    // he never used would collide with the unit he does speak in, and a crop
+    // counted two ways publishes as available — which is how the Sold out
+    // button used to leave sold-out crops on the page.
+    const [movement] = toMovements(
+      [proposal({ kind: 'remove', reason: 'sold', amountValue: null, amountUnit: null })],
+      ctx,
+    )
+
+    expect(movement.amount).toBeUndefined()
+    expect(movement.kind).toBe('remove')
+  })
+
+  it('carries no reason when he was not reducing anything', () => {
+    const [movement] = toMovements([proposal()], ctx)
+    expect(movement.reason).toBeUndefined()
+  })
+
   it('keeps the number when he gave a unit', () => {
     const [movement] = toMovements([proposal()], ctx)
     expect(movement.amount).toEqual({ value: 30, unit: 'lb' })

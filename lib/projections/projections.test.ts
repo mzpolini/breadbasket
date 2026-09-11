@@ -267,3 +267,98 @@ describe('an undated forecast on the two surfaces', () => {
     expect(row.live).toBe(false)
   })
 })
+
+/**
+ * He said it was gone. Every surface has to agree with him — including his own
+ * stock list, which is what he checked first when the okra wouldn't leave.
+ */
+describe('a crop he has emptied', () => {
+  const AT = new Date('2026-08-27T12:00:00Z')
+  const ago = (days: number) => new Date(AT.getTime() - days * 86400000).toISOString()
+  const emptied: Movement[] = [
+    {
+      id: 'a',
+      farmId: 'farm',
+      product: 'red okra',
+      kind: 'trueup',
+      amount: { value: 10, unit: 'lb' },
+      measured: false,
+      state: 'confirmed',
+      source: 'farmer',
+      sessionId: 's',
+      occurredAt: ago(2),
+    },
+    {
+      id: 'b',
+      farmId: 'farm',
+      product: 'red okra',
+      kind: 'remove',
+      reason: 'wildlife',
+      measured: false,
+      state: 'confirmed',
+      source: 'farmer',
+      sessionId: 's',
+      occurredAt: ago(1),
+    },
+  ]
+  const folded = () => balancesFrom(emptied, { now: AT, freshnessDays: 7 })
+
+  it('is off the farm stand', () => {
+    expect(standListings(folded(), { now: AT })).toEqual([])
+  })
+
+  it('is off the public listing', () => {
+    expect(publicListings(folded(), { now: AT })).toEqual([])
+  })
+
+  it('is off his own stock list too', () => {
+    expect(farmerInventory(folded(), { now: AT })).toEqual([])
+  })
+})
+
+/**
+ * Flagged positions were sorting to the top of his page, because positions come
+ * back in the order he first mentioned them and the crops he hasn't spoken
+ * about lately are the oldest ones. The greyed block sat above everything a
+ * customer could actually buy.
+ */
+describe('the order of the farm stand', () => {
+  const AT = new Date('2026-08-27T12:00:00Z')
+  const ago = (days: number) => new Date(AT.getTime() - days * 86400000).toISOString()
+  const spoken = (product: string, daysAgo: number): Movement => ({
+    id: product,
+    farmId: 'farm',
+    product,
+    kind: 'trueup',
+    measured: false,
+    state: 'confirmed',
+    source: 'farmer',
+    sessionId: 's',
+    occurredAt: ago(daysAgo),
+  })
+
+  it('puts what is available above what has gone stale', () => {
+    // Mentioned oldest first, which is exactly how they arrive from the fold.
+    const stand = standListings(
+      balancesFrom([spoken('collards', 20), spoken('tomatoes', 1)], {
+        now: AT,
+        freshnessDays: 7,
+      }),
+      { now: AT },
+    )
+
+    expect(stand.map((row) => row.product)).toEqual(['tomatoes', 'collards'])
+  })
+
+  it('puts the most recently spoken of first within each group', () => {
+    const stand = standListings(
+      balancesFrom(
+        [spoken('collards', 20), spoken('tomatoes', 3), spoken('basil', 1), spoken('okra', 30)],
+        { now: AT, freshnessDays: 7 },
+      ),
+      { now: AT },
+    )
+
+    expect(stand.map((row) => row.product)).toEqual(['basil', 'tomatoes', 'collards', 'okra'])
+  })
+})

@@ -24,6 +24,22 @@ const full: Movement = {
 }
 
 describe('storage round trip', () => {
+  it('preserves why the stock went', () => {
+    const lost: Movement = { ...full, kind: 'remove', reason: 'wildlife' }
+    expect(toMovement(toRow(lost))).toEqual(lost)
+  })
+
+  it('reads a row written when spoil was a kind as a loss with a reason', () => {
+    // Rows predate the collapse of spoil into a reason. They must keep folding
+    // as reductions rather than failing to load or quietly asserting presence.
+    const legacy = { ...toRow({ ...full, kind: 'remove' }), kind: 'spoil' }
+
+    const back = toMovement(legacy)
+
+    expect(back.kind).toBe('remove')
+    expect(back.reason).toBe('spoiled')
+  })
+
   it('preserves every field of a fully populated movement', () => {
     expect(toMovement(toRow(full))).toEqual(full)
   })

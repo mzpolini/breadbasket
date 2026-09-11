@@ -38,15 +38,27 @@ export const proposedMovementSchema = z.object({
     ),
   rawPhrase: z.string().describe('What he actually said for this crop, verbatim'),
   kind: z
-    .enum(['add', 'remove', 'spoil', 'trueup'])
+    .enum(['add', 'remove', 'trueup'])
     .describe(
       'trueup = a total ("I have 50"). add = more arrived ("picked 20 more"). ' +
-        'remove = sold or given away. spoil = lost. Default to trueup when ambiguous.',
+        'remove = stock went, for any reason — say which in `reason`. ' +
+        'Default to trueup when ambiguous.',
+    ),
+  reason: z
+    .enum(['sold', 'spoiled', 'wildlife', 'pests', 'weather', 'donated', 'own-use', 'other'])
+    .nullable()
+    .describe(
+      'Only on a remove: why it went. Deer or birds are wildlife, insects are ' +
+        'pests, rot is spoiled, hail or drought is weather. Null on an add or a ' +
+        'true-up. Use other, never a guess, when he said why and none of these fit.',
     ),
   amountValue: z
     .number()
     .nullable()
-    .describe('Null when he gave no number — that is a valid claim, not a failure'),
+    .describe(
+      'Null when he gave no number — that is a valid claim, not a failure. On a ' +
+        'remove, null means all of it: the position empties.',
+    ),
   amountUnit: z
     .string()
     .nullable()

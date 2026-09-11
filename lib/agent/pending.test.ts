@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { latestPending } from './pending'
+import { latestPending, publishOnSignal } from './pending'
 import type { FarmUIMessage } from './ui-message'
 
 const movement = (product: string) => ({
@@ -7,6 +7,7 @@ const movement = (product: string) => ({
   heardAs: product,
   rawPhrase: product,
   kind: 'trueup' as const,
+  reason: null,
   amountValue: 10,
   amountUnit: 'lb',
   measured: false,
@@ -54,13 +55,16 @@ describe('latestPending', () => {
     expect(latestPending([proposal('t1', 'tomatoes')], new Set(['t1']), {})).toBeNull()
   })
 
-  it('falls back to the earlier card when the latest is published', () => {
+  it('never falls back to a card he corrected', () => {
+    // t1 is the card he changed his mind about, t2 the correction he published.
+    // Falling back to t1 is how nine movements he had rejected reached his
+    // ledger a minute after the conversation moved on (ADR 0003).
     const found = latestPending(
       [proposal('t1', 'tomatoes'), proposal('t2', 'peaches')],
       new Set(['t2']),
       {},
     )
-    expect(found?.proposalId).toBe('t1')
+    expect(found).toBeNull()
   })
 
   it('publishes his edit, not what the agent first heard', () => {
@@ -94,5 +98,79 @@ describe('latestPending', () => {
       ],
     } as unknown as FarmUIMessage
     expect(latestPending([rules], new Set(), {})).toMatchObject({ kind: 'rules', proposalId: 'r1' })
+  })
+})
+
+/**
+ * A spoken yes, and only the one he is actually saying.
+ *
+ * The relay used to walk the whole transcript for publish signals, with its
+ * "already acted on" set held in memory — so every remount replayed every
+ * signal the conversation had ever contained, each publishing whatever card was
+ * still outstanding. Nine rows he never approved.
+ */
+describe('publishOnSignal', () => {
+  const signal = (toolCallId: string): FarmUIMessage =>
+    ({
+      id: toolCallId,
+      role: 'assistant',
+      parts: [{ type: 'tool-publishPending', toolCallId, state: 'output-available', output: { publish: true } }],
+    }) as unknown as FarmUIMessage
+
+  const said = (text: string): FarmUIMessage =>
+    ({ id: text, role: 'user', parts: [{ type: 'text', text }] }) as unknown as FarmUIMessage
+
+  it('publishes the card he is looking at when the agent hears a yes', () => {
+    const relay = publishOnSignal(
+      [proposal('t1', 'tomatoes'), said('yes'), signal('s1')],
+      new Set(),
+      {},
+      new Set(),
+    )
+
+    expect(relay).toMatchObject({ signalId: 's1', target: { proposalId: 't1' } })
+  })
+
+  it('ignores a signal from an earlier turn, however the screen was reloaded', () => {
+    const relay = publishOnSignal(
+      [signal('s1'), said('remove okra'), proposal('t9', 'okra')],
+      new Set(),
+      {},
+      new Set(),
+    )
+
+    expect(relay).toBeNull()
+  })
+
+  it('does not act twice on one yes', () => {
+    const messages = [proposal('t1', 'tomatoes'), signal('s1')]
+    expect(publishOnSignal(messages, new Set(), {}, new Set(['s1']))).toBeNull()
+  })
+
+  it('publishes nothing when the card he is being asked about is already up', () => {
+    const relay = publishOnSignal(
+      [proposal('t1', 'tomatoes'), signal('s1')],
+      new Set(['t1']),
+      {},
+      new Set(),
+    )
+
+    expect(relay).toBeNull()
+  })
+
+  it('publishes nothing when there is no read-back waiting at all', () => {
+    expect(publishOnSignal([signal('s1')], new Set(), {}, new Set())).toBeNull()
+  })
+
+  it('publishes his edit, not what the agent first heard', () => {
+    const edited = [movement('heirloom tomatoes')]
+    const relay = publishOnSignal(
+      [proposal('t1', 'tomatoes'), signal('s1')],
+      new Set(),
+      { t1: edited },
+      new Set(),
+    )
+
+    expect(relay?.target).toMatchObject({ movements: edited })
   })
 })

@@ -45,6 +45,7 @@ const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000
  * - a position at **zero or below** is withheld. Sold out is honest and expected;
  *   negative means a movement is missing so we do not know what is there. Neither
  *   is an offer
+ * - a position he has said is **none left** is withheld, figure or no figure
  */
 export function publicListings(
   balances: ProductBalance[],
@@ -54,6 +55,7 @@ export function publicListings(
     // `live` already implies a confirmation, but narrowing on it beats a cast:
     // a cast would hide the day someone changes what `live` means.
     if (!balance.live || balance.confirmedAt === null) return []
+    if (balance.status === 'none') return []
     // Sold out is honest; negative is a data error. Neither is an offer, and
     // neither belongs on a page that promises what is listed is available.
     if (balance.status === 'known' && balance.quantity <= 0) return []
@@ -92,12 +94,18 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000
  * The farm stand's "available now". Flagged positions are **shown, not hidden**
  * (NORTHSTAR.md, flag-don't-delete): a stale item greyed with its age is more
  * honest than a silent disappearance, and the stale page is the farmer's
- * reminder to check in. Sold out (zero) and negative (a missing movement) are
- * withheld — neither is an offer.
+ * reminder to check in. Sold out (zero), none left (something he said) and
+ * negative (a missing movement) are withheld — none of them is an offer.
+ *
+ * **Ordered here, not by the caller.** Positions arrive in the order he first
+ * mentioned them, and the crops he has not spoken about lately are the oldest
+ * ones — so the untouched order put the whole greyed block at the top of his
+ * page, above everything a customer could actually buy.
  */
 export function standListings(balances: ProductBalance[], opts: ProjectionOptions): StandListing[] {
-  return balances.flatMap(({ product, forecast, balance }) => {
+  const listings = balances.flatMap(({ product, forecast, balance }) => {
     if (forecast || balance.confirmedAt === null) return []
+    if (balance.status === 'none') return []
     if (balance.status === 'known' && balance.quantity <= 0) return []
 
     return [
@@ -110,6 +118,14 @@ export function standListings(balances: ProductBalance[], opts: ProjectionOption
       },
     ]
   })
+
+  // Available above stale, and the most recently spoken of first within each —
+  // the top of the page is the freshest thing he has.
+  return listings.sort(
+    (a, b) =>
+      Number(a.status === 'stale') - Number(b.status === 'stale') ||
+      a.daysSinceSpoken - b.daysSinceSpoken,
+  )
 }
 
 /** When the farmer last said anything at all — the stand's headline freshness line. */
@@ -179,6 +195,11 @@ const DEFAULT_WEIGH_AFTER = 3
  * What he sees. Everything the public view shows plus everything it hides:
  * lapsed positions, so he can tell "sold out" from "you forgot to tell me",
  * and the problems worth his attention.
+ *
+ * A position he has emptied leaves this list too. Flag-don't-delete governs
+ * *silence* — a timer must never hide food. This is the opposite case: he said
+ * the crop was gone, and a stock list that keeps showing it is arguing with
+ * him. That was the first place he looked when the okra wouldn't leave.
  */
 export function farmerInventory(
   balances: ProductBalance[],
@@ -186,7 +207,7 @@ export function farmerInventory(
 ): InventoryRow[] {
   const threshold = opts.weighAfterEstimates ?? DEFAULT_WEIGH_AFTER
 
-  return balances.map(({ product, forecast, window, balance }) => ({
+  return balances.flatMap(({ product, forecast, window, balance }) => balance.status === 'none' ? [] : [{
     product,
     quantity:
       balance.status === 'known' ? { value: balance.quantity, unit: balance.unit } : null,
@@ -198,7 +219,7 @@ export function farmerInventory(
     forecast,
     window,
     attention: attentionFor(balance, threshold),
-  }))
+  }])
 }
 
 function attentionFor(

@@ -34,6 +34,9 @@ export function toMovements(proposed: ProposedMovement[], ctx: CommitContext): M
       product: item.product.toLowerCase().trim(),
       ...(item.rawPhrase ? { rawPhrase: item.rawPhrase } : {}),
       kind: item.kind,
+      // Only a reduction has a reason. Carried separately from the kind so that
+      // "the deer ate them" stops having to be filed as spoilage.
+      ...(item.kind === 'remove' && item.reason ? { reason: item.reason } : {}),
       ...(amount ? { amount } : {}),
       // A claim with no number cannot have been measured, whatever the model said.
       measured: amount ? item.measured : false,

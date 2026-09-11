@@ -70,8 +70,21 @@ export const movements = pgTable(
     /** What he actually said, so normalisation stays auditable. */
     rawPhrase: text('raw_phrase'),
 
-    /** add | remove | spoil | trueup — see lib/ledger/types. */
+    /** add | remove | trueup — see lib/ledger/types. Rows written before the
+     * collapse may still carry `spoil`; storage reads those as a removal whose
+     * reason is spoilage. */
     kind: text('kind').notNull(),
+
+    /**
+     * Why stock went — sold, spoiled, wildlife, pests, weather, donated,
+     * own-use, other. Null on anything that isn't a removal.
+     *
+     * Deliberately its own column rather than another kind: the reason never
+     * changes the arithmetic, and conflating the two is how "the deer ate them"
+     * ended up recorded as food that rotted. Kept alongside `raw_phrase`, which
+     * still holds his own sentence.
+     */
+    reason: text('reason'),
 
     /**
      * Nullable on purpose. "I've got collards" is a valid claim with no number,
@@ -133,6 +146,35 @@ export const movements = pgTable(
     foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
   ],
 )
+
+/**
+ * The read-backs that have been published, one row per proposal.
+ *
+ * A guard rather than a record: it exists so the *store* can refuse a second
+ * publish of the same read-back, instead of that promise resting on a client
+ * remembering what it has already done. A client bug replayed one corrected
+ * read-back into the ledger nine times; nothing downstream could tell, because
+ * every row carried a fresh id (ADR 0003).
+ *
+ * The key cannot live on `movements`: one read-back legitimately writes several
+ * movements under one proposal id, so a unique index there would reject the
+ * rest of a valid batch.
+ */
+export const publishedProposals = pgTable(
+  'published_proposals',
+  {
+    farmId: text('farm_id').notNull(),
+    /** The agent's tool-call id for the read-back he approved. */
+    proposalId: text('proposal_id').notNull(),
+    publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.farmId, table.proposalId] }),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
+  ],
+)
+
+export type PublishedProposalRow = typeof publishedProposals.$inferSelect
 
 export type MovementRow = typeof movements.$inferSelect
 export type NewMovementRow = typeof movements.$inferInsert

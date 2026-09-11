@@ -8,6 +8,7 @@ import { FRESHNESS_DAYS } from '@/lib/seed'
 import { appendRules, rulesForFarm } from '@/lib/storage/harvest-rules'
 import { requireFarmAccess } from '@/lib/auth/current-user'
 import { appendMovements } from '@/lib/storage/movements'
+import { claimProposal } from '@/lib/storage/proposals'
 import { teach } from '@/lib/storage/vocabulary'
 
 /**
@@ -27,6 +28,12 @@ export async function commitProposed(
   proposalId?: string,
 ) {
   await requireFarmAccess(farmId)
+
+  // The store decides whether this read-back has already been published, so the
+  // promise holds no matter what the client does with it (ADR 0003).
+  if (proposalId && !(await claimProposal(farmId, proposalId))) {
+    return { written: 0, alreadyPublished: true }
+  }
 
   const movements = toMovements(proposed, {
     farmId,
@@ -56,6 +63,10 @@ export async function commitProposed(
 export async function commitRules(farmId: string, proposed: ProposedRule[], proposalId?: string) {
   await requireFarmAccess(farmId)
 
+  if (proposalId && !(await claimProposal(farmId, proposalId))) {
+    return { written: 0, alreadyPublished: true }
+  }
+
   const now = new Date()
   const standing = activeRules(await rulesForFarm(farmId), { now, freshnessDays: FRESHNESS_DAYS })
   const byProduct = new Map(standing.map((rule) => [rule.product, rule.id]))
@@ -80,11 +91,21 @@ export async function commitRules(farmId: string, proposed: ProposedRule[], prop
 }
 
 /**
- * "Sold out" — a true-up to zero, and measured, because an empty crate is the
- * one quantity a farmer is never estimating.
+ * "Sold out" — a removal with no number, which empties the position (ADR 0002).
+ *
+ * It used to be a true-up to zero with no unit, which the ledger reads as the
+ * internal count unit. Against a crop he speaks of in pounds that is two units
+ * for one crop, and a position counted two ways publishes as *available* — so
+ * the one button we gave him for this job left the crop on his page and sent
+ * him off to settle arithmetic he had never got wrong.
  */
 export async function markSoldOut(farmId: string, product: string) {
-  await appendPlain(farmId, product, { kind: 'trueup', amountValue: 0, amountUnit: null, measured: true })
+  await appendPlain(farmId, product, {
+    kind: 'remove',
+    reason: 'sold',
+    amountValue: null,
+    amountUnit: null,
+  })
   return { soldOut: product }
 }
 
@@ -105,6 +126,7 @@ async function appendPlain(
         product,
         heardAs: product,
         rawPhrase: '',
+        reason: null,
         measured: false,
         forecast: false,
         windowFrom: null,

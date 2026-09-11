@@ -6,7 +6,27 @@
  * balance to the stated figure regardless of accumulated arithmetic. It is what
  * makes the model survivable in the presence of estimates.
  */
-export type MovementKind = 'add' | 'remove' | 'spoil' | 'trueup'
+export type MovementKind = 'add' | 'remove' | 'trueup'
+
+/**
+ * Why stock went. Carried by a reduction and independent of it — the reason
+ * never changes the arithmetic, only the record.
+ *
+ * A closed set, because the farmer's own sentence is kept anyway in
+ * `rawPhrase`: this is the part that has to be countable across a season.
+ * `spoiled` is one reason among several rather than a kind of its own, which is
+ * what it used to be — a crop eaten in the field never reached a crate, and
+ * filing deer under rot made the record say something untrue.
+ */
+export type LossReason =
+  | 'sold'
+  | 'spoiled'
+  | 'wildlife'
+  | 'pests'
+  | 'weather'
+  | 'donated'
+  | 'own-use'
+  | 'other'
 
 /** `forecast` is a claim about a future window; `confirmed` is a claim about now. */
 export type MovementState = 'forecast' | 'confirmed'
@@ -62,6 +82,8 @@ export type Movement = {
   /** What the farmer actually said, kept so normalisation stays auditable. */
   rawPhrase?: string
   kind: MovementKind
+  /** Why it went. Meaningful on a reduction; ignored on an add or a true-up. */
+  reason?: LossReason
   /**
    * Optional on purpose. "I've got collards" is ordinary speech and a valid
    * claim — forcing a number would interrogate him on the most natural sentence
@@ -141,7 +163,19 @@ export type PresentBalance = Estimated & {
 }
 
 /**
+ * He has said there is nothing left — whether or not he ever gave a number.
+ *
+ * Reachable only from something he said, never from a timer: silence makes a
+ * position **flagged**, not empty. It exists as a status rather than as a
+ * quantity of zero because most of the farm never has a figure at all, so there
+ * was no number to zero (ADR 0002).
+ */
+export type NoneBalance = Estimated & {
+  status: 'none'
+}
+
+/**
  * A union on purpose. Callers must narrow on `status`, so no code path can read
  * a quantity that was never computable.
  */
-export type Balance = KnownBalance | UnitConflict | PresentBalance
+export type Balance = KnownBalance | UnitConflict | PresentBalance | NoneBalance

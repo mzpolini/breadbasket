@@ -18,34 +18,80 @@ export type Pending =
   | { kind: 'rules'; proposalId: string; rules: ProposedRule[] }
 
 /**
- * The most recent read-back still waiting on him, or `null`.
+ * The read-back still waiting on him, or `null`.
  *
- * Scans forward and keeps the last match, so a correction supersedes the card
- * it corrected. Reads `drafts` so an edit made in the sheet is what publishes.
+ * **Only the newest one counts.** A read-back he corrected is dead: scanning
+ * past it to an older uncommitted card is exactly how a batch he had rejected
+ * reached the ledger, nine times, once the newest card had been published
+ * (ADR 0003). If the newest is already up, there is nothing to publish — not
+ * something else.
+ *
+ * Reads `drafts` so an edit made in the sheet is what publishes.
  */
 export function latestPending(
   messages: FarmUIMessage[],
   committed: Set<string>,
   drafts: Record<string, ProposedMovement[]>,
 ): Pending | null {
-  let found: Pending | null = null
+  let newest: Pending | null = null
 
   for (const message of messages) {
     for (const part of message.parts) {
       const proposalId = (part as { toolCallId?: string }).toolCallId
-      if (!proposalId || committed.has(proposalId)) continue
+      if (!proposalId) continue
 
       if (part.type === 'tool-proposeMovements' && 'output' in part && part.output) {
         const output = part.output as { movements: ProposedMovement[] }
-        found = { kind: 'movements', proposalId, movements: drafts[proposalId] ?? output.movements }
+        newest = { kind: 'movements', proposalId, movements: drafts[proposalId] ?? output.movements }
       }
 
       if (part.type === 'tool-proposeHarvestRules' && 'output' in part && part.output) {
         const output = part.output as { rules: ProposedRule[] }
-        found = { kind: 'rules', proposalId, rules: output.rules }
+        newest = { kind: 'rules', proposalId, rules: output.rules }
       }
     }
   }
 
-  return found
+  return newest && committed.has(newest.proposalId) ? null : newest
+}
+
+/** A yes that may be acted on, and the card it publishes. */
+export type Relay = {
+  /** The `publishPending` tool call this answers, so one yes acts once. */
+  signalId: string
+  target: Pending
+}
+
+/**
+ * Which spoken yes, if any, to act on right now.
+ *
+ * **Only a signal in the newest message is live.** The transcript is reloaded
+ * in full on every mount, so a relay that scans all of it re-fires every yes
+ * the conversation has ever contained — which is what published a corrected
+ * read-back nine times, a minute after he had moved on, with nothing on screen
+ * to show for it. A yes is part of the turn he is in; outside that turn it is
+ * a record of something he already said.
+ *
+ * Pure so the rule can be tested without a browser, which is where it failed.
+ */
+export function publishOnSignal(
+  messages: FarmUIMessage[],
+  committed: Set<string>,
+  drafts: Record<string, ProposedMovement[]>,
+  relayed: Set<string>,
+): Relay | null {
+  const current = messages[messages.length - 1]
+  if (!current) return null
+
+  for (const part of current.parts) {
+    if (part.type !== 'tool-publishPending') continue
+
+    const signalId = (part as { toolCallId?: string }).toolCallId
+    if (!signalId || relayed.has(signalId)) continue
+
+    const target = latestPending(messages, committed, drafts)
+    if (target) return { signalId, target }
+  }
+
+  return null
 }
