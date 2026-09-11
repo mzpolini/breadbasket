@@ -28,7 +28,7 @@ const KINDS: {
     hint: 'new stock, added to what was there',
   },
   { value: 'remove', reason: 'sold', label: 'I sold that', hint: 'went out — market or order' },
-  { value: 'remove', reason: 'wildlife', label: 'I lost that', hint: 'deer, weather, pests, rot' },
+  { value: 'remove', reason: null, label: 'I lost that', hint: 'deer, weather, pests, rot — say which below' },
 ]
 
 /**
@@ -117,9 +117,12 @@ export function EditSheet({
 
         <div className="mt-5 flex flex-col gap-2">
           {KINDS.map((kind) => {
+            // The two reductions are told apart by *which* reason, not by
+            // whether there is one: comparing truthiness lit both at once.
             const selected =
               draft.kind === kind.value &&
-              (kind.value !== 'remove' || Boolean(draft.reason) === Boolean(kind.reason))
+              (kind.value !== 'remove' ||
+                (kind.reason === 'sold' ? draft.reason === 'sold' : draft.reason !== 'sold'))
             return (
               <button
                 key={`${kind.value}-${kind.reason ?? 'none'}`}
@@ -128,10 +131,17 @@ export function EditSheet({
                   setDraft({
                     ...draft,
                     kind: kind.value,
-                    // Keep a reason he has already picked when it still fits the
-                    // kind; only fall back to the button's own.
+                    // "I lost that" names no reason of its own — the row below
+                    // is where he says which, and guessing one for him is how
+                    // the deer ended up filed as rot in the first place.
                     reason:
-                      kind.value === 'remove' ? (draft.reason ?? kind.reason) : null,
+                      kind.value !== 'remove'
+                        ? null
+                        : kind.reason === 'sold'
+                          ? 'sold'
+                          : draft.reason === 'sold'
+                            ? null
+                            : draft.reason,
                   })
                 }
                 className="flex flex-col items-start rounded-[18px] px-4 py-3 text-left"

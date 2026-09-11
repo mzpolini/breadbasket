@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { COUNT_UNIT } from '../ledger'
 import type { ProposedMovement } from './tools'
-import { toMovements } from './commit'
+import { soldOut, toMovements } from './commit'
 
 /**
  * The seam where the model's proposal becomes a fact.
@@ -131,5 +131,27 @@ describe('toMovements', () => {
     const [movement] = toMovements([proposal()], ctx)
     expect(movement.source).toBe('farmer')
     expect(movement.farmId).toBe('farm-1')
+  })
+})
+
+/**
+ * The one movement he can write without saying anything — so the only place it
+ * can be got wrong is here.
+ */
+describe('the Sold out button', () => {
+  it('empties the crop without inventing a unit for it', () => {
+    const [movement] = toMovements([soldOut('red okra')], ctx)
+
+    expect(movement.kind).toBe('remove')
+    expect(movement.reason).toBe('sold')
+    expect(movement.amount).toBeUndefined()
+  })
+
+  it('is a claim about now, from him, like any other', () => {
+    const [movement] = toMovements([soldOut('red okra')], ctx)
+
+    expect(movement.state).toBe('confirmed')
+    expect(movement.source).toBe('farmer')
+    expect(movement.measured).toBe(false)
   })
 })

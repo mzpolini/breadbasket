@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { commitProposed, commitRules } from '@/app/farm/[farmId]/actions'
 import { COUNT_UNIT, formatAmount } from '@/lib/ledger'
 import { EditSheet } from './edit-sheet'
-import { publishOnSignal, type Pending } from '@/lib/agent/pending'
+import { newestProposalId, publishOnSignal, type Pending } from '@/lib/agent/pending'
 import type { ProposedMovement, ProposedRule } from '@/lib/agent/tools'
 import type { FarmUIMessage } from '@/lib/agent/ui-message'
 
@@ -59,6 +59,12 @@ export function Chat({
   const relayed = useRef<Set<string>>(new Set())
 
   const busy = status === 'submitted' || status === 'streaming'
+  /**
+   * The only card that may still be published. Anything above it he has talked
+   * past — a correction supersedes the card it corrected, and a superseded card
+   * must be as dead to his thumb as it is to a spoken yes (ADR 0003).
+   */
+  const live = newestProposalId(messages)
   const editingMovement = editing ? drafts[editing.key]?.[editing.index] : undefined
 
   useEffect(() => {
@@ -140,6 +146,7 @@ export function Chat({
                   key={key}
                   movements={movements}
                   done={done}
+                  superseded={!done && proposalId !== live}
                   pending={pending}
                   onEdit={(index) => {
                     setDrafts((d) => ({ ...d, [proposalId]: d[proposalId] ?? output.movements }))
@@ -161,6 +168,7 @@ export function Chat({
                   key={key}
                   rules={output.rules}
                   done={done}
+                  superseded={!done && proposalId !== live}
                   pending={pending}
                   onPublish={() => publish({ kind: 'rules', proposalId, rules: output.rules })}
                   onFix={() => setInput('Not quite — ')}
@@ -317,6 +325,7 @@ function describe(type: string): { label: string; detail: string; tone: 'ok' | '
 function ReadBackCard({
   movements,
   done,
+  superseded,
   pending,
   onEdit,
   onPublish,
@@ -324,6 +333,8 @@ function ReadBackCard({
 }: {
   movements: ProposedMovement[]
   done: boolean
+  /** He corrected this after it was shown. Nothing here may be published. */
+  superseded: boolean
   pending: boolean
   onEdit: (index: number) => void
   onPublish: () => void
@@ -338,7 +349,7 @@ function ReadBackCard({
         <Row
           key={`${movement.product}-${index}`}
           movement={movement}
-          onEdit={done ? undefined : () => onEdit(index)}
+          onEdit={done || superseded ? undefined : () => onEdit(index)}
         />
       ))}
 
@@ -350,6 +361,8 @@ function ReadBackCard({
           >
             It&rsquo;s up. Everything here expires, so it comes down on its own.
           </span>
+        ) : superseded ? (
+          <Superseded />
         ) : (
           // No question above the buttons: the rows are the question, and the
           // buttons answer it. Asking it in words was one line of noise on a
@@ -376,6 +389,24 @@ function ReadBackCard({
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * What a card he has talked past says instead of offering to publish.
+ *
+ * It stays on screen rather than disappearing — it is part of the conversation,
+ * and he should be able to see what he changed his mind about. It simply can no
+ * longer be published, by thumb or by word.
+ */
+function Superseded() {
+  return (
+    <span
+      className="meta text-[12.5px] leading-[1.5]"
+      style={{ color: 'color-mix(in srgb, var(--color-text) 50%, transparent)' }}
+    >
+      You changed this after I showed it. The newer one is the one that counts.
+    </span>
   )
 }
 
@@ -487,12 +518,14 @@ function Row({
 function RuleCard({
   rules,
   done,
+  superseded,
   pending,
   onPublish,
   onFix,
 }: {
   rules: ProposedRule[]
   done: boolean
+  superseded: boolean
   pending: boolean
   onPublish: () => void
   onFix: () => void
@@ -541,6 +574,8 @@ function RuleCard({
             Noted as coming soon. It&rsquo;s a rhythm, not stock &mdash; tell me when you
             actually pick.
           </span>
+        ) : superseded ? (
+          <Superseded />
         ) : (
           <div className="flex gap-[10px]">
             <button

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { latestPending, publishOnSignal } from './pending'
+import { latestPending, newestProposalId, publishOnSignal } from './pending'
 import type { FarmUIMessage } from './ui-message'
 
 const movement = (product: string) => ({
@@ -172,5 +172,26 @@ describe('publishOnSignal', () => {
     )
 
     expect(relay?.target).toMatchObject({ movements: edited })
+  })
+})
+
+/**
+ * The same dead-card rule, reachable with a thumb instead of a yes. A card he
+ * has talked past kept rendering its "Sounds good" button, so scrolling back up
+ * could publish something he had already corrected.
+ */
+describe('newestProposalId', () => {
+  it('is the last read-back he was shown', () => {
+    expect(newestProposalId([proposal('t1', 'tomatoes'), proposal('t2', 'peaches')])).toBe('t2')
+  })
+
+  it('does not change once that read-back is published', () => {
+    // Published or not, it is still the last thing he was shown — otherwise
+    // publishing the newest card would bring an older one back to life.
+    expect(newestProposalId([proposal('t1', 'tomatoes')])).toBe('t1')
+  })
+
+  it('is null when he has been shown nothing', () => {
+    expect(newestProposalId([])).toBeNull()
   })
 })

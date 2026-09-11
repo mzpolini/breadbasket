@@ -16,7 +16,7 @@ import {
  * quietly asserting presence — so the translation happens here, at the edge,
  * and nothing above this line has to know the history.
  */
-function toKind(kind: string): Pick<Movement, 'kind' | 'reason'> {
+function kindAndReason(kind: string): Pick<Movement, 'kind' | 'reason'> {
   if (kind === 'spoil') return { kind: 'remove', reason: 'spoiled' }
   return { kind: kind as MovementKind }
 }
@@ -36,7 +36,7 @@ export function toMovement(row: MovementRow): Movement {
     farmId: row.farmId,
     product: row.product,
     ...(row.rawPhrase ? { rawPhrase: row.rawPhrase } : {}),
-    ...toKind(row.kind),
+    ...kindAndReason(row.kind),
     ...(row.reason ? { reason: row.reason as LossReason } : {}),
     // Keyed off the *value* alone. A row with a number and no unit is a bare
     // count, not a corrupt row — requiring the pair is how the number used to

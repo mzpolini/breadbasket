@@ -33,6 +33,25 @@ export function latestPending(
   committed: Set<string>,
   drafts: Record<string, ProposedMovement[]>,
 ): Pending | null {
+  const newest = newestReadBack(messages, drafts)
+  return newest && committed.has(newest.proposalId) ? null : newest
+}
+
+/**
+ * The last read-back in the transcript, published or not.
+ *
+ * Exported so the screen can tell a live card from one he has already talked
+ * past: an older card still rendering "Sounds good" is the same dead-card
+ * publish as the relay's, just reachable with a thumb instead of a yes.
+ */
+export function newestProposalId(messages: FarmUIMessage[]): string | null {
+  return newestReadBack(messages, {})?.proposalId ?? null
+}
+
+function newestReadBack(
+  messages: FarmUIMessage[],
+  drafts: Record<string, ProposedMovement[]>,
+): Pending | null {
   let newest: Pending | null = null
 
   for (const message of messages) {
@@ -52,7 +71,7 @@ export function latestPending(
     }
   }
 
-  return newest && committed.has(newest.proposalId) ? null : newest
+  return newest
 }
 
 /** A yes that may be acted on, and the card it publishes. */

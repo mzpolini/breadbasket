@@ -18,6 +18,13 @@ Append-only is a promise about *his claims*. These rows are not claims; they are
 
 Movements written without an approval are **deleted**, identified by the proposal id of a read-back that was never published. Nothing else is ever deleted: anything the farmer actually said is corrected forward, by a new movement, as before.
 
+Two grounds qualify, and both are evidence rather than judgement:
+
+- A proposal id **listed as never approved**. This is a reading of the transcript — before the publish record existed there was nothing in the data to query — so each one is written down with the conversation it came from.
+- A proposal id **written in more than one batch**. One approval writes one batch, and every movement in it carries the batch's timestamp; several timestamps under one proposal id is therefore proof of a second write, not an inference about what he meant. The earliest batch stays, because that one is the publish he asked for.
+
+Nothing is ever re-filed or rewritten. Rows carrying the old `spoil` kind are his claims, and storage reads them as a reduction whose reason is spoilage, so there is nothing there to repair.
+
 Going forward a uniqueness constraint on `(farm_id, proposal_id)` makes the duplicate class impossible regardless of what any client does, and a superseded read-back is marked dead so a later "yes" can never land on it.
 
 ## Consequences

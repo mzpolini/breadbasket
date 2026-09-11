@@ -1,47 +1,54 @@
 import { and, eq } from 'drizzle-orm'
 import { getDb } from '../db'
-import { publishedProposals as claims } from '../db/schema'
+import { publishedProposals as published } from '../db/schema'
 
 /**
- * Which read-backs have been published — enforced by the database rather than
+ * Which read-backs have been published — decided by the database rather than
  * remembered by a client.
  *
- * The promise is that nothing reaches the ledger that he has not approved, and
- * that approving once writes once. A client bug replayed a read-back he had
- * **corrected** into the ledger nine times, and nothing downstream could tell:
- * every movement carried a fresh id, so the append's own conflict clause never
- * fired (ADR 0003).
+ * The promise is that nothing reaches the ledger he has not approved, and that
+ * approving once writes once. A client bug published a read-back he had
+ * **corrected** nine times over, and nothing downstream could tell: every
+ * movement carried a fresh id, so the append's own conflict clause never fired
+ * (ADR 0003).
  *
- * The claim is taken *before* the write, so a crash between the two loses a
- * publish rather than duplicating one. He can always say it again; he cannot
- * un-say something recorded twice.
+ * Recorded *before* the write rather than after, so a failure in between loses
+ * a publish rather than duplicating one — he can always say it again, and
+ * cannot un-say something recorded twice. `releasePublish` is how the losing
+ * side of that trade is handed back, since the driver speaks HTTP and has no
+ * transaction to hold the two writes together.
  */
-export async function claimProposal(farmId: string, proposalId: string): Promise<boolean> {
-  const claimed = await getDb()
-    .insert(claims)
+
+/** Records this read-back as published. False means it already was. */
+export async function publishOnce(farmId: string, proposalId: string): Promise<boolean> {
+  const first = await getDb()
+    .insert(published)
     .values({ farmId, proposalId, publishedAt: new Date() })
     .onConflictDoNothing()
-    .returning({ proposalId: claims.proposalId })
+    .returning({ proposalId: published.proposalId })
 
-  return claimed.length > 0
+  return first.length > 0
 }
 
-/** Whether this read-back has already been published, without claiming it. */
-export async function proposalClaimed(farmId: string, proposalId: string): Promise<boolean> {
-  const rows = await getDb()
-    .select({ proposalId: claims.proposalId })
-    .from(claims)
-    .where(and(eq(claims.farmId, farmId), eq(claims.proposalId, proposalId)))
-
-  return rows.length > 0
+/**
+ * Undoes a record whose write did not land.
+ *
+ * Without this a failed append leaves the read-back permanently unpublishable:
+ * the card dies on his screen with nothing written behind it, which is the one
+ * outcome worse than writing twice.
+ */
+export async function releasePublish(farmId: string, proposalId: string): Promise<void> {
+  await getDb()
+    .delete(published)
+    .where(and(eq(published.farmId, farmId), eq(published.proposalId, proposalId)))
 }
 
-/** Every claim on record for a farm. */
-export async function claimedProposals(farmId: string): Promise<string[]> {
+/** Every read-back this farm has published. */
+export async function publishedIds(farmId: string): Promise<string[]> {
   const rows = await getDb()
-    .select({ proposalId: claims.proposalId })
-    .from(claims)
-    .where(eq(claims.farmId, farmId))
+    .select({ proposalId: published.proposalId })
+    .from(published)
+    .where(eq(published.farmId, farmId))
 
   return rows.map((row) => row.proposalId)
 }

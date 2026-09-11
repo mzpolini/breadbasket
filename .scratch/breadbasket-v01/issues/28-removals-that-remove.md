@@ -143,3 +143,11 @@ The parser eval should be re-run after the tool schema changes, since the kind e
 - Vocabulary for this work is in `CONTEXT.md`: movement, position, read-back, published, flagged, freshness window, none left, loss reason.
 - Two founder callouts stay open and should not be pre-empted: whether "no number means all of it" matches how farmers speak (FOUNDER 6), and whether documented crop loss is worth holding (FOUNDER 7).
 - Order within this spec: the fold and the surfaces first, then the relay and the store guard, then the cleanup. The farmer's live page is wrong until the cleanup runs, so it should not be left to last by accident.
+
+## Closing notes
+
+Shipped in `169d438`, plus review fixes.
+
+**Verified against the development database**, as the testing decisions require: publishing a read-back once returns true and a second attempt returns false; the cleanup deleted thirteen rows — nine from the read-back he corrected, four duplicate persimmon writes from the same defect in an earlier session — and his okra now reads as none left on both surfaces, with the stale block sorted below what is available.
+
+**One requirement landed only in part.** "Every read-back for a reduction states the resulting balance rather than the delta" holds where a reduction empties a position: the card reads *none left*. A reduction with a figure still reads as the figure he said — the card is built from the proposed movement alone and does not know the position it applies to, so stating an outcome would mean threading current balances into the chat and risking a stale one. The safety-critical half, where he gives no number and means all of it, is covered. The rest is an open call, recorded here rather than quietly narrowed in ADR 0002.

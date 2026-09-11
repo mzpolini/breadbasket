@@ -1,14 +1,14 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { toMovements, toRules } from '@/lib/agent/commit'
+import { soldOut, toMovements, toRules } from '@/lib/agent/commit'
 import type { ProposedMovement, ProposedRule } from '@/lib/agent/tools'
 import { activeRules } from '@/lib/cadence'
 import { FRESHNESS_DAYS } from '@/lib/seed'
 import { appendRules, rulesForFarm } from '@/lib/storage/harvest-rules'
 import { requireFarmAccess } from '@/lib/auth/current-user'
 import { appendMovements } from '@/lib/storage/movements'
-import { claimProposal } from '@/lib/storage/proposals'
+import { publishOnce, releasePublish } from '@/lib/storage/proposals'
 import { teach } from '@/lib/storage/vocabulary'
 
 /**
@@ -31,7 +31,7 @@ export async function commitProposed(
 
   // The store decides whether this read-back has already been published, so the
   // promise holds no matter what the client does with it (ADR 0003).
-  if (proposalId && !(await claimProposal(farmId, proposalId))) {
+  if (proposalId && !(await publishOnce(farmId, proposalId))) {
     return { written: 0, alreadyPublished: true }
   }
 
@@ -43,7 +43,7 @@ export async function commitProposed(
     newId: () => crypto.randomUUID(),
   })
 
-  await appendMovements(movements)
+  await write(farmId, proposalId, () => appendMovements(movements))
 
   await Promise.all(
     proposed.map((item) => teach(farmId, item.heardAs, item.product.toLowerCase().trim())),
@@ -63,7 +63,7 @@ export async function commitProposed(
 export async function commitRules(farmId: string, proposed: ProposedRule[], proposalId?: string) {
   await requireFarmAccess(farmId)
 
-  if (proposalId && !(await claimProposal(farmId, proposalId))) {
+  if (proposalId && !(await publishOnce(farmId, proposalId))) {
     return { written: 0, alreadyPublished: true }
   }
 
@@ -79,7 +79,7 @@ export async function commitRules(farmId: string, proposed: ProposedRule[], prop
     currentRuleIdFor: (product) => byProduct.get(product),
   })
 
-  await appendRules(rules)
+  await write(farmId, proposalId, () => appendRules(rules))
   await Promise.all(
     proposed.map((item) => teach(farmId, item.heardAs, item.product.toLowerCase().trim())),
   )
@@ -90,62 +90,37 @@ export async function commitRules(farmId: string, proposed: ProposedRule[], prop
   return { written: rules.length }
 }
 
-/**
- * "Sold out" — a removal with no number, which empties the position (ADR 0002).
- *
- * It used to be a true-up to zero with no unit, which the ledger reads as the
- * internal count unit. Against a crop he speaks of in pounds that is two units
- * for one crop, and a position counted two ways publishes as *available* — so
- * the one button we gave him for this job left the crop on his page and sent
- * him off to settle arithmetic he had never got wrong.
- */
+/** "Sold out" — the shape of it, and why, is in `soldOut`. */
 export async function markSoldOut(farmId: string, product: string) {
-  await appendPlain(farmId, product, {
-    kind: 'remove',
-    reason: 'sold',
-    amountValue: null,
-    amountUnit: null,
-  })
-  return { soldOut: product }
-}
-
-/**
- * Both buttons go through `toMovements` rather than building a row directly, so
- * a movement written by a tap is indistinguishable from one written by speech.
- */
-async function appendPlain(
-  farmId: string,
-  product: string,
-  over: Partial<ProposedMovement> & Pick<ProposedMovement, 'kind'>,
-) {
   await requireFarmAccess(farmId)
 
-  const movements = toMovements(
-    [
-      {
-        product,
-        heardAs: product,
-        rawPhrase: '',
-        reason: null,
-        measured: false,
-        forecast: false,
-        windowFrom: null,
-        windowTo: null,
-        amountValue: null,
-        amountUnit: null,
-        ...over,
-      },
-    ],
-    {
+  await appendMovements(
+    toMovements([soldOut(product)], {
       farmId,
       sessionId: crypto.randomUUID(),
       occurredAt: new Date().toISOString(),
       newId: () => crypto.randomUUID(),
-    },
+    }),
   )
-
-  await appendMovements(movements)
 
   revalidatePath(`/f/${farmId}`)
   revalidatePath('/farm', 'layout')
+
+  return { soldOut: product }
+}
+
+/**
+ * Runs the write that a recorded publish promised.
+ *
+ * If it fails, the record is handed back — otherwise the read-back is marked
+ * published with nothing behind it, and his card is dead with no stock written.
+ * Two round trips rather than one transaction because the driver speaks HTTP.
+ */
+async function write(farmId: string, proposalId: string | undefined, append: () => Promise<void>) {
+  try {
+    await append()
+  } catch (error) {
+    if (proposalId) await releasePublish(farmId, proposalId)
+    throw error
+  }
 }

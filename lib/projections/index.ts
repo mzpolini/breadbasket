@@ -207,19 +207,25 @@ export function farmerInventory(
 ): InventoryRow[] {
   const threshold = opts.weighAfterEstimates ?? DEFAULT_WEIGH_AFTER
 
-  return balances.flatMap(({ product, forecast, window, balance }) => balance.status === 'none' ? [] : [{
-    product,
-    quantity:
-      balance.status === 'known' ? { value: balance.quantity, unit: balance.unit } : null,
-    confidence: balance.estimateDebt === 0 ? 'weighed' : 'estimated',
-    weeksSinceMeasured: weeksSince(balance.lastMeasuredAt, opts.now),
-    confirmedAt: balance.confirmedAt,
-    expiresAt: balance.expiresAt,
-    live: balance.live,
-    forecast,
-    window,
-    attention: attentionFor(balance, threshold),
-  }])
+  return balances.flatMap(({ product, forecast, window, balance }) => {
+    if (balance.status === 'none') return []
+
+    return [
+      {
+        product,
+        quantity:
+          balance.status === 'known' ? { value: balance.quantity, unit: balance.unit } : null,
+        confidence: balance.estimateDebt === 0 ? ('weighed' as const) : ('estimated' as const),
+        weeksSinceMeasured: weeksSince(balance.lastMeasuredAt, opts.now),
+        confirmedAt: balance.confirmedAt,
+        expiresAt: balance.expiresAt,
+        live: balance.live,
+        forecast,
+        window,
+        attention: attentionFor(balance, threshold),
+      },
+    ]
+  })
 }
 
 function attentionFor(

@@ -2,7 +2,7 @@ import { Chat } from '@/app/_components/chat'
 import { messagesForFarm } from '@/lib/storage/messages'
 import { publishedRuleProposals } from '@/lib/storage/harvest-rules'
 import { publishedProposals } from '@/lib/storage/movements'
-import { claimedProposals } from '@/lib/storage/proposals'
+import { publishedIds } from '@/lib/storage/proposals'
 
 /**
  * Surface 1 — the conversation. The product happens here; everything else is
@@ -26,15 +26,15 @@ export default async function FarmerChatPage({
   const { farmId } = await params
   const verbose = (await searchParams).v === '1'
 
-  const [messages, publishedMovements, publishedRules, claimed] = await Promise.all([
+  const [messages, publishedMovements, publishedRules, recorded] = await Promise.all([
     messagesForFarm(farmId),
     publishedProposals(farmId),
     publishedRuleProposals(farmId),
-    claimedProposals(farmId),
+    publishedIds(farmId),
   ])
-  // Claims are the record going forward; the other two cover read-backs
-  // published before claims existed, so a reload can't offer them again.
-  const published = [...new Set([...publishedMovements, ...publishedRules, ...claimed])]
+  // The publish record is the truth going forward; the other two cover
+  // read-backs published before it existed, so a reload can't offer them again.
+  const published = [...new Set([...publishedMovements, ...publishedRules, ...recorded])]
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">

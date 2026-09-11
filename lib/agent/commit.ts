@@ -63,6 +63,36 @@ function toAmount(item: ProposedMovement) {
   return { value: item.amountValue, unit: item.amountUnit?.trim() || COUNT_UNIT }
 }
 
+/**
+ * What the "Sold out" button says, in the same shape a spoken claim arrives in.
+ *
+ * Lives here rather than in the action so the one movement he can write without
+ * a conversation is testable, and so it goes through `toMovements` like
+ * everything else — a movement written by a tap must be indistinguishable from
+ * one written by speech.
+ *
+ * A reduction with no number, which empties the position (ADR 0002). It used to
+ * be a true-up to zero with no unit, which the ledger reads as the internal
+ * count unit: against a crop he speaks of in pounds that is two units for one
+ * crop, and a position counted two ways publishes as *available*. The one
+ * button we gave him for this job left the crop on his page.
+ */
+export function soldOut(product: string): ProposedMovement {
+  return {
+    product,
+    heardAs: product,
+    rawPhrase: '',
+    kind: 'remove',
+    reason: 'sold',
+    amountValue: null,
+    amountUnit: null,
+    measured: false,
+    forecast: false,
+    windowFrom: null,
+    windowTo: null,
+  }
+}
+
 export type RuleCommitContext = {
   farmId: string
   proposalId?: string
