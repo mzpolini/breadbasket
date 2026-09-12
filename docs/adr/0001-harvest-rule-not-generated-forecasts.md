@@ -16,7 +16,7 @@ That reuse is a trap. The ledger is append-only; six generated rows have no link
 
 A cadence is stored once as a **harvest rule** — crop, expected amount, interval, optional start, optional end — with the farmer's sentence kept verbatim. Rules are append-only; a change or an end is a new rule that supersedes the old, newest wins.
 
-Rules never generate ledger rows. The farm stand's "coming soon" reads rules directly, as the farmer's sentence. The ledger only receives an on-hand movement when the farmer confirms a real harvest at check-in. A rule is flagged by the same freshness window as stock when the farmer hasn't spoken about the crop.
+Rules never generate ledger rows. The farm stand's "coming soon" reads rules directly, as the farmer's sentence. The ledger only receives an on-hand movement when the farmer confirms a real harvest at check-in. A rule is flagged by the same freshness window as stock when the farmer hasn't spoken about the crop. *(Amended by ADR 0004: a rule that names its own end date is not flagged before that date. Only an open-ended rule ages this way.)*
 
 For the POC only "weekly" is structured. Any other cadence is stored verbatim on the rule and shown to the founder as a callout rather than parsed.
 

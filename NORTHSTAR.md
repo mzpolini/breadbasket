@@ -4,7 +4,7 @@
 
 Terms used here are defined in [`CONTEXT.md`](./CONTEXT.md). Decisions that are hard to reverse are in [`docs/adr/`](./docs/adr/).
 
-**Founder:** the questions for you are in the boxes marked ❓ **FOUNDER**. There are five. Answer in your own words, in any order, straight into this doc — a sentence is plenty.
+**Founder:** the questions for you are in the boxes marked ❓ **FOUNDER**. There are four. Answer in your own words, in any order, straight into this doc — a sentence is plenty. Answered ones don't stay as questions; they get folded into the text above them, which is why this document reads as settled in places it didn't last week.
 
 ---
 
@@ -72,7 +72,7 @@ Farmers do not think in snapshots. They think in seasons and cadences. So a **ha
 
 **Decided (see ADR 0001):** a rule is stored *once*, as the farmer's sentence, not expanded into future entries. A rule is a forecast, never stock. Stock only appears when the farmer confirms a real harvest at check-in — "yeah, picked twenty this week." Changing a rule ("make it fifteen") or ending it ("watermelon's done") is a new rule that replaces the old.
 
-If a week goes by and no harvest is confirmed, nothing is wrong and nothing is written. The rule simply ages like stock does: after seven days without the farmer mentioning the crop, it's flagged, and the next check-in asks "still on for watermelon?"
+If a week goes by and no harvest is confirmed, nothing is wrong and nothing is written. A rule that named its own end — "through September" — simply stands until then, because he has already spoken for that period (ADR 0004). One with no end ages like stock does: after seven days without the farmer mentioning the crop it's flagged, and the next check-in asks "still on for watermelon?"
 
 For the POC we only structure **weekly**. Anything else the farmer says — "Tuesdays and Thursdays," "every two weeks," "through the season" — is kept in his own words and surfaced here for a decision.
 
@@ -91,21 +91,15 @@ For the POC we only structure **weekly**. Anything else the farmer says — "Tue
 
 The second beta tried to remove okra and couldn't. Two things were wrong, and the second is the serious one.
 
-A removal spoken without a number — "deer ate them", "sold out", "gave the rest away" — left the figure standing and reset the freshness clock, so the crop came back *stronger* than before. **Decided (ADR 0002): a removal with no number empties the position.** If it's only some, he says a number; the read-back now shows the resulting balance rather than the change, so what he approves is the outcome.
+A removal spoken without a number — "deer ate them", "sold out", "gave the rest away" — left the figure standing and reset the freshness clock, so the crop came back *stronger* than before. **Decided (ADR 0002): a removal with no number empties the position.** The card reads *none left*, so what he approves is the outcome rather than a change he has to do arithmetic on.
 
 The other thing: nine records he never approved. A card he had corrected got replayed into his ledger minutes later. The ledger stays append-only for everything he actually said, and those rows are deleted rather than compensated (ADR 0003) — his history should not claim he told us something he didn't.
 
 **Deer are not spoilage.** "Spoiled" meant food that went bad in a crate; a crop eaten in the field never reached one. Pests, wildlife and weather are ordinary on a farm, so a removal now carries a **loss reason** — sold, spoiled, wildlife, pests, weather, donated, own use — recorded alongside his own sentence. The reason never changes the arithmetic and never reaches a customer. A wildlife or weather loss is also the one case where the agent asks one line about what comes next: deer in the okra usually means the planting is gone, not just the crate.
 
-> ❓ **FOUNDER 6 — Is "no number means all of it" how your farmers talk?**
-> When one of them says "the deer got the okra" or "we're out of collards", is that always the whole lot? We've made that the rule, and made him give a number when it's only part — but you'd know if there's a common phrasing that means "most of it" and would now get read as "all of it".
->
-> *Answer:*
+**He has since confirmed that rule, and tightened it.** Asked whether "no number means all of it" matches how farmers talk, he was unambiguous: it does, *"unless they explicitly say something like reduce my count or change the number of okra I have because the deer ate some."* So the default is hard, and the agent no longer asks whether he meant the whole lot — he did. A partial only exists when the farmer is plainly talking about a **count**, and then he has given, or owes, a figure.
 
-> ❓ **FOUNDER 7 — Is documented crop loss worth anything to your farmers?**
-> We're about to start recording *why* stock went, not just that it did. Kept honestly, that's a season's record of what deer, weather and pests cost a farm — the kind of thing disaster programmes and insurers ask for. Is that something they'd use, or are we the wrong people to be holding it?
->
-> *Answer:*
+**Loss records — he wants them.** Asked whether a documented crop loss is worth anything, the answer was that loss records would be *"a vital piece of data for farmers and extremely valuable."* That promotes it from a by-product to something of its own, and it is bigger than a field on a movement — so it is not scheduled here. Recording continues regardless, which means the data accumulates from this week whatever we decide. The thinking lives in [`docs/founder/loss-records.md`](./docs/founder/loss-records.md), including what the ledger can already answer without asking a farmer for anything new.
 
 ### Varieties
 
@@ -128,14 +122,9 @@ The check-in is the ritual that makes everything else work. It's where:
 - Estimates get measured, or corrected
 - The freshness clock resets
 
-**Decided for the POC: the stale page is the reminder.** There is no push, no email, no text. When the farmer looks at his own stand and sees "not confirmed recently," that's the nudge. Beta testing continues on this basis; it does not wait on the question below.
+**Decided, and now confirmed by the founder: the stale page is the reminder.** There is no push, no email, no text. When the farmer looks at his own stand and sees "not confirmed recently", that is the nudge. Asked directly whether to add messaging, he said he thinks *"we're fine without the messaging for now and unconfirmed items going stale and listed at the bottom"* — which is what the stand now does.
 
-> ❓ **FOUNDER 2 — Would your farmers respond to a reminder, and on what channel?**
-> Right now the only prompt to check in is that their public page visibly goes stale. Should we also text them? Email? Would a reminder feel helpful or like nagging? Is once a week the right rhythm to ask for?
->
-> Two shapes, if the answer is yes. **One message a week, about the page:** "three things go grey on your page tomorrow — tell me what's still there." Or **a ping per crop** as each one ages. We'd pick the first, on the grounds that per-crop pings across a whole farm is how a farmer learns to mute you — but you know them and we don't.
->
-> *Answer:*
+**With one exception, and it is a real one.** His sentence carried an "unless": *unless the farmer has explicitly stated "I'll have kale each week from now through December."* A rule that names its own end has already answered the question the flag asks, and greying it a week later argues with something he told us — on the one surface whose job is to be honest about what is unconfirmed. So a dated rule now stands, unflagged, until its date; only an open-ended rule ages the way stock does (ADR 0004). Stock itself is untouched: a forecast never keeps a crop fresh, whatever it promises about the future.
 
 **Success metric, decided:** weeks with at least one check-in ÷ weeks on platform, per farm. Number of farms is a funnel number, not the measure of whether this works.
 
@@ -180,9 +169,9 @@ Considered and dropped. This document *is* the board. Questions live here, answe
 
 ## This week
 
-**Primary goal:** make removal trustworthy, then make varieties speakable — and get the founder's answers moving.
+**Primary goal:** varieties — now that removal is trustworthy and three of his questions are answered.
 
-The second beta's four reports split cleanly in two, and they ship in that order. First, integrity: a removal that removes, a ledger that only ever holds what he approved, and his live record put right. Then the product model: crops with varieties under them. The first is dangerous while it is broken; the second is only awkward.
+The second beta's four reports split cleanly in two. The first half has shipped: a removal that removes, a ledger that only ever holds what he approved, his live record put right, and the stand sorted so stale reads below live. What is left is the product model — crops with varieties under them — which was only ever the awkward half rather than the dangerous one.
 
 - [x] Decide cadence semantics — one standing rule (ADR 0001)
 - [x] Define harvest cadence as a product concept (above, and `CONTEXT.md`)
@@ -194,8 +183,9 @@ The second beta's four reports split cleanly in two, and they ship in that order
 - [x] Decide removal semantics — no number means all of it (ADR 0002)
 - [x] Decide loss reasons — wildlife, weather and pests are ordinary, not spoilage
 - [x] Decide the variety model — crop and variety, freshness rolls up, quantity does not
-- [ ] Ship the integrity pass: removals that empty, the publish guard, `(farm_id, proposal_id)` uniqueness, the Sold-out button, and the live-data cleanup (ADR 0003)
-- [ ] Sort the stand so stale reads below live — it currently floats to the top by accident
+- [x] Ship the integrity pass: removals that empty, the publish guard, the publish record, the Sold-out button, and the live-data cleanup (ADR 0003)
+- [x] Sort the stand so stale reads below live — it was floating to the top by accident
+- [x] Let a dated harvest rule stand until its date, rather than greying a week later (ADR 0004)
 - [ ] Ship crops with varieties, and merge the five tomato products back into two
 - [ ] Share this doc and [`DESIGN.md`](./DESIGN.md) with the founder
 - [x] Build the minimal harvest-rule store: parse "X every week through Y" into a rule, read it back; anything unparseable kept verbatim as a note
@@ -203,4 +193,5 @@ The second beta's four reports split cleanly in two, and they ship in that order
 - [x] Ship the "In season" badge
 - [x] Show measured / estimated / flagged in the inventory view and in read-backs
 - [ ] Second beta conversation with a real farmer, against the build above, specifically to stress-test cadence
+- [ ] Loss records — briefed, not scheduled ([`docs/founder/loss-records.md`](./docs/founder/loss-records.md))
 - [ ] Black Farmers of Maryland — deferred
