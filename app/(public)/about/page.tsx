@@ -1,0 +1,7 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+
+export const metadata: Metadata = { title: 'Our roots | Breadbasket' }
+export default function Page() {
+ return <main id="main"><section className="wrap inner-hero"><p className="eyebrow">OUR ROOTS</p><h1>Good things grow<br />in community.</h1><p>Built by and for Black farmers and their communities first. With room for more to grow.</p></section><section className="wrap inner-content"><h2>The conversation was already there.</h2><p>At market. On the phone. In a text to a regular. Farmers already tell people what they have. Breadbasket starts with that knowledge, and helps it travel.</p><p>A farmer names what’s fresh. Breadbasket reads it back. The farmer gives the final yes. A simple list becomes a way for more neighbors to find the harvest.</p><h2>Trust has roots. Freshness takes care.</h2><p>The Black Farmer Directory is our first network. MABFC runs the directory and Know Your Farmer verification. Breadbasket supplies the availability behind each participating farm’s stand.</p><p>The vision is shared-use technology, with costs shared through the co-op, shaped by the farmers who use it.</p><h2>Introductions, then relationships.</h2><p>Breadbasket helps people find one another. The conversation, the visit, and the purchase belong to the farmer and buyer.</p><Link className="button primary" href="/farmers">Grow with us ↗</Link><Link className="text-link" href="/partners">Bring your community ↗</Link></section></main>
+}

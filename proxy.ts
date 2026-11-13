@@ -3,8 +3,9 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 /**
  * Routes that don't require authentication.
  *
- * Public routes: buyer page, sign-in/sign-up flow, and the API's OpenAPI
- * document — shared with the directory team, and describing nothing secret.
+ * Public routes: the marketing pages, buyer pages, sign-in/sign-up flows, and the
+ * API's OpenAPI document — shared with the directory team, and describing nothing
+ * secret.
  *
  * `/api/v1/*` is public **to Clerk only**: the directory has no session, so
  * those handlers authenticate an API key themselves (ticket 36). A handler added
@@ -12,6 +13,13 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
  * any route handler that checks nothing.
  */
 const isPublicRoute = createRouteMatcher([
+  '/',
+  '/farmers',
+  '/find',
+  '/partners',
+  '/about',
+  '/privacy',
+  '/sms',
   '/f/(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',

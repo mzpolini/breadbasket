@@ -62,10 +62,29 @@ describe('activeRules', () => {
     expect(activeRules([rule({ id: 'r1', endsOn: '2026-08-27' })], opts)).toHaveLength(1)
   })
 
-  it('flags a rule he has not spoken about in a week', () => {
-    const [active] = activeRules([rule({ id: 'r1', createdAt: '2026-08-19T09:00:00Z' })], opts)
+  it('flags an open-ended rule he has not spoken about in a week', () => {
+    const [active] = activeRules(
+      [rule({ id: 'r1', endsOn: undefined, createdAt: '2026-08-19T09:00:00Z' })],
+      opts,
+    )
     expect(active.flagged).toBe(true)
     expect(active.daysSinceSpoken).toBe(8)
+  })
+
+  it('leaves a rule alone until the date he said it runs to', () => {
+    // "Kale every week from now through December" answers the question the flag
+    // would ask. Greying it a week later argues with something he has told us,
+    // and the page going stale is the only nudge there is — so it has to be
+    // right about what is actually unconfirmed.
+    const [active] = activeRules([rule({ id: 'r1', createdAt: '2026-08-19T09:00:00Z' })], opts)
+
+    expect(active.flagged).toBe(false)
+    expect(active.daysSinceSpoken).toBe(8)
+  })
+
+  it('still counts the days, so the agent knows how long it has been', () => {
+    const [active] = activeRules([rule({ id: 'r1', createdAt: '2026-07-01T09:00:00Z' })], opts)
+    expect(active.daysSinceSpoken).toBe(57)
   })
 
   it('re-affirming is a newer rule with the same content, and resets the clock', () => {

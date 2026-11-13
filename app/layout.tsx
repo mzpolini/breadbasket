@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Caprasimo, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ServiceWorkerRegister } from "@/app/_components/service-worker-register";
@@ -18,14 +18,13 @@ const caprasimo = Caprasimo({
 });
 
 export const metadata: Metadata = {
-  title: "BreadBasket",
+  title: "Breadbasket",
   description: "What a farmer has, right now, and never anything stale.",
   manifest: "/manifest.json",
-  themeColor: "#000000",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "BreadBasket",
+    title: "Breadbasket",
   },
   icons: {
     icon: [
@@ -35,6 +34,8 @@ export const metadata: Metadata = {
     apple: "/icon-192.png",
   },
 };
+
+export const viewport: Viewport = { themeColor: "#f7f3e8" };
 
 export default function RootLayout({
   children,

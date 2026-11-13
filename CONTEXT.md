@@ -35,7 +35,7 @@ Every movement carries both, independently:
 
 ## Cadence
 
-- **Harvest rule** — a standing statement of recurring expected harvest: a crop, an expected amount, an interval, and an end. "Twenty pounds of watermelon every week through September." Stored once, with the farmer's own sentence kept verbatim, not expanded into future entries. Changing or ending a rule is a new rule that supersedes the old; newest wins. A rule is flagged by the same freshness window as stock when the farmer hasn't spoken about the crop.
+- **Harvest rule** — a standing statement of recurring expected harvest: a crop, an expected amount, an interval, and an end. "Twenty pounds of watermelon every week through September." Stored once, with the farmer's own sentence kept verbatim, not expanded into future entries. Changing or ending a rule is a new rule that supersedes the old; newest wins. A rule that names its own end stands, unflagged, until that date — he has already spoken for the period he named (ADR 0004). Only an open-ended rule is flagged by the same freshness window as stock. Either way a live rule never keeps *stock* fresh: it is a forecast, and a forecast never makes a crop available.
 - **Coming soon** — what a customer sees derived from harvest rules. A forecast, never stock.
 - **Harvest** — a real pick-up confirmed by the farmer, written as an on-hand movement. The only way a harvest rule ever turns into stock.
 

@@ -15,9 +15,10 @@ export type RuleOptions = {
 /**
  * A rule as the surfaces see it: current, and either fresh or flagged.
  *
- * `flagged` uses the same freshness window as stock — a rule he hasn't spoken
- * about in a week is shown stale, exactly like a position would be. It never
- * hides the rule; only an explicit end does that.
+ * `flagged` never hides a rule; only an explicit end does that. And a rule that
+ * **named the date it runs to** is not flagged before that date (ADR 0004) — the
+ * flag asks "is this still on?", and he has already answered for the period he
+ * named. Only an open-ended rule ages the way stock does.
  */
 export type ActiveRule = HarvestRule & {
   /** Whole days since he last spoke about this rule. */
@@ -51,7 +52,12 @@ export function activeRules(rules: HarvestRule[], opts: RuleOptions): ActiveRule
       const daysSinceSpoken = Math.floor(
         (opts.now.getTime() - Date.parse(rule.createdAt)) / MS_PER_DAY,
       )
-      return { ...rule, daysSinceSpoken, flagged: daysSinceSpoken >= opts.freshnessDays }
+      // `endsOn` survives the filter above only when it is still ahead of us, so
+      // its presence here means he has spoken for today already. Days are
+      // counted either way: the agent still wants to know how long it has been.
+      const stale = daysSinceSpoken >= opts.freshnessDays
+
+      return { ...rule, daysSinceSpoken, flagged: stale && !rule.endsOn }
     })
 }
 
