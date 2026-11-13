@@ -49,6 +49,44 @@ Contract: `/openapi.json` (the same document the API is tested against).
 - `GET /farms/availability`: every mapped farm in one call. This is the one the map should load. Optional `farm_ids=a,b,c` (at most 100) to narrow it; IDs that don't exist or aren't mapped are left out, not reported as errors.
 - `GET /farms/{farm_id}/availability`: one farm. `404` for a farm that doesn't exist and for one that isn't mapped, with the same answer, so the API doesn't reveal which farms exist.
 
+**Try it.** Replace `<your key>` with the key we send you (it starts `bb_`).
+
+```bash
+# Every participating farm, in one call. This is the one the map should use.
+curl -H "Authorization: Bearer <your key>" \
+  https://breadbasket-theta.vercel.app/api/v1/farms/availability
+
+# One farm. Mighty Thundercloud is the first real farm.
+curl -H "Authorization: Bearer <your key>" \
+  https://breadbasket-theta.vercel.app/api/v1/farms/seed-farm/availability
+```
+
+Today's response for Mighty Thundercloud (`farm_id` `seed-farm`), trimmed:
+
+```json
+{
+  "farm_id": "seed-farm",
+  "directory_profile_id": "mabfc-pending-mighty-thundercloud",
+  "farm_stand_url": "https://breadbasket-theta.vercel.app/f/seed-farm",
+  "last_updated": "2026-09-29T18:44:50.780Z",
+  "items": [
+    {
+      "product": "beets", "variety": null, "status": "coming_soon",
+      "last_updated": "2026-09-15T23:49:22.608Z",
+      "expected_from": null, "available_until": "2026-11-30",
+      "quantity": null, "unit": null, "price": null
+    }
+  ]
+}
+```
+
+Two things to know about it:
+
+- **`directory_profile_id` is a placeholder** (`mabfc-pending-mighty-thundercloud`) until we have the farm's real MABFC ID. Don't join on it yet. `farm_id` is the stable one.
+- **It's thin, and that's honest.** The farmer hasn't updated since Sept 29, so everything he had on hand is long past gone and no longer reported. It fills in the moment he checks in again. The response is a true picture, not a bug.
+
+**A demo farm to map against.** `demo-profile-1` (`farm_id` `farm_demofarm001`, "Demo Farm (sample data)") is not a real farm. It exists so you can see every status at once: items in season, coming soon (with and without dates), and gone (both because the farmer said so and because the silence ran out). Ignore it, or filter it out by that profile ID, once real farms are flowing. We'll remove it before launch.
+
 **Which farms appear.** KYF-verified *and* given your directory profile ID. Your profile ID is echoed back as `directory_profile_id`, and `farm_id` never changes, so it's safe to store and join on.
 
 **Statuses**
