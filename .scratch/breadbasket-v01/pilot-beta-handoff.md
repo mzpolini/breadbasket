@@ -54,7 +54,7 @@ Contract: `/openapi.json` (the same document the API is tested against).
 **Statuses**
 
 - `in_season`: the farm has it now and has mentioned it within the last 7 days.
-- `coming_soon`: the farm expects it. `expected_from` / `available_until` are set when the farm gave dates, otherwise `null`.
+- `coming_soon`: the farm expects it. `expected_from` / `available_until` are set when the farm gave dates, otherwise `null`. A "coming soon" with no dates that the farm hasn't repeated for 7 days drops out; one with dates stays until its window ends.
 - `gone`: the farm said none left, or hasn't mentioned it for 7 days. **Kept in the response for 14 days after it goes**, then dropped. Remove the pin when you see `gone` or when the item disappears.
 
 A crop appears once per farm, at its most useful status.

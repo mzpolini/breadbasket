@@ -195,6 +195,26 @@ describe('coming_soon', () => {
     expect(lettuce).toMatchObject({ status: 'coming_soon', expected_from: null, available_until: null })
   })
 
+  it('ages an undated forecast out with the same silence that makes stock gone', () => {
+    const undated = (days: number) =>
+      items([movement({ product: 'cabbage', state: 'forecast', occurredAt: ago(days) })])
+
+    expect(undated(6.9)).toHaveLength(1)
+    expect(undated(7)).toHaveLength(0)
+  })
+
+  it('keeps a dated forecast through silence — its window, not the farmer\'s repetition, ends it', () => {
+    const list = items([
+      movement({
+        product: 'lettuce',
+        state: 'forecast',
+        window: { from: '2026-11-25', to: '2026-12-02' },
+        occurredAt: ago(30),
+      }),
+    ])
+    expect(list).toHaveLength(1)
+  })
+
   it('is dropped once the forecast window has passed', () => {
     const past = movement({
       product: 'lettuce',
