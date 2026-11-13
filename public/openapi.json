@@ -4,9 +4,13 @@
   "info": {
     "title": "Breadbasket availability API",
     "version": "1.0.0-beta.1",
-    "description": "Read-only availability for farms in the Mid-Atlantic Black Farmers Cooperative directory.\n\nBreadbasket is the source of truth for what a farm has. Farmers tell Breadbasket in plain language; this API reports it as a list of items per farm.\n\n**Which farms appear.** Only farms that are KYF-verified *and* mapped to a directory profile. Any other farm ID behaves exactly like one that does not exist.\n\n**Public data only.** No emails, phone numbers, or anything the farmer said verbatim.\n\n**Quantities and prices** are in the schema so they can be filled in later without a breaking change. During the beta they are always `null`.\n\n**Caching.** Responses may be cached for 5 minutes. Send `If-None-Match` with the last `ETag` to get a `304` when nothing changed.\n\n**Rate limit.** 60 requests per minute per key. Every response carries `RateLimit-*` headers; a `429` carries `Retry-After`.\n\n**Keys.** Staging and production keys are separate and do not work across environments. A revoked key gets `403`; ask a Breadbasket admin for a new one."
+    "description": "Read-only availability for farms in the Mid-Atlantic Black Farmers Cooperative directory.\n\nBreadbasket is the source of truth for what a farm has. Farmers tell Breadbasket in plain language; this API reports it as a list of items per farm.\n\n**Which farms appear.** Only farms that are KYF-verified *and* mapped to a directory profile. Any other farm ID behaves exactly like one that does not exist.\n\n**Public data only.** No emails, phone numbers, or anything the farmer said verbatim.\n\n**Quantities and prices** are in the schema so they can be filled in later without a breaking change. During the beta they are always `null`.\n\n**Caching.** Responses may be cached for 5 minutes. Send `If-None-Match` with the last `ETag` to get a `304` when nothing changed.\n\n**Rate limit.** 60 requests per minute per key. Every response carries `RateLimit-*` headers; a `429` carries `Retry-After`.\n\n**Keys.** Development, staging and production keys are separate and do not work across environments. A revoked key gets `403`; ask a Breadbasket admin for a new one."
   },
   "servers": [
+    {
+      "url": "https://breadbasket-theta.vercel.app/api/v1",
+      "description": "Development (the endpoints answer here once they are built)"
+    },
     {
       "url": "https://breadbasket.example/api/v1",
       "description": "Production (URL to be confirmed)"

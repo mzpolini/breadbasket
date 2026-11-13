@@ -112,11 +112,15 @@ export function buildOpenApiDocument() {
         `**Rate limit.** ${RATE_LIMIT_PER_MINUTE} requests per minute per key. Every response ` +
           'carries `RateLimit-*` headers; a `429` carries `Retry-After`.',
         '',
-        '**Keys.** Staging and production keys are separate and do not work across environments. ' +
+        '**Keys.** Development, staging and production keys are separate and do not work across environments. ' +
           'A revoked key gets `403`; ask a Breadbasket admin for a new one.',
       ].join('\n'),
     },
     servers: [
+      {
+        url: 'https://breadbasket-theta.vercel.app/api/v1',
+        description: 'Development (the endpoints answer here once they are built)',
+      },
       { url: 'https://breadbasket.example/api/v1', description: 'Production (URL to be confirmed)' },
       { url: 'https://staging.breadbasket.example/api/v1', description: 'Staging (URL to be confirmed)' },
     ],
