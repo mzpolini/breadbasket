@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/auth/current-user'
-import { createFarm as createFarmRecord, getFarm } from '@/lib/storage/farms'
+import { isValidSlug, toSlug } from '@/lib/farms'
+import { createFarm as createFarmRecord, getFarm, getFarmBySlug } from '@/lib/storage/farms'
 import { assignFarmerToFarm as assignFarmerRecord } from '@/lib/storage/users'
 
 export async function assignFarmerToFarm(userId: string, farmId: string) {
@@ -19,19 +20,23 @@ export async function assignFarmerToFarm(userId: string, farmId: string) {
 }
 
 export async function createFarm(
-  id: string,
+  slugInput: string,
   name: string,
   tagline?: string,
   market?: string,
 ) {
   await requireAdmin()
 
-  // Check if farm already exists
-  const existing = await getFarm(id)
-  if (existing) {
-    throw new Error(`Farm with id ${id} already exists`)
+  // The farm ID is generated; what the admin types is the public URL.
+  const slug = isValidSlug(slugInput) ? slugInput : toSlug(slugInput || name)
+  if (!slug) {
+    throw new Error(`"${slugInput}" can't be made into a farm stand URL`)
   }
 
-  await createFarmRecord(id, name, tagline, market)
+  if (await getFarmBySlug(slug)) {
+    throw new Error(`A farm already uses the URL /f/${slug}`)
+  }
+
+  await createFarmRecord({ name, slug, tagline, market })
   revalidatePath('/admin')
 }

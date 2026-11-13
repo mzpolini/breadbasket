@@ -91,14 +91,16 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: access.status })
   }
 
-  const tools = farmTools(farmId)
+  // Attributed to whoever is signed in — never to anything in the request body.
+  const postedBy = access.user.clerkId
+  const tools = farmTools(farmId, postedBy)
   const history = await messagesForFarm(farmId)
   const conversation = [...history, message]
 
   // Persist what he said before the model runs. If the request dies mid-stream
   // his sentence is still on the record — losing it is the failure this exists
   // to prevent.
-  await saveMessages(farmId, [message])
+  await saveMessages(farmId, [message], postedBy)
 
   let forModel: FarmUIMessage[]
   try {
@@ -148,6 +150,7 @@ export async function POST(req: Request) {
         await saveMessages(
           farmId,
           finished.filter((m) => !alreadyStored.has(m.id)),
+          postedBy,
         )
       },
     }),

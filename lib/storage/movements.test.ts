@@ -24,6 +24,17 @@ const full: Movement = {
 }
 
 describe('storage round trip', () => {
+  it('preserves who said it', () => {
+    const attributed: Movement = { ...full, postedBy: 'user_alice' }
+    expect(toRow(attributed).postedBy).toBe('user_alice')
+    expect(toMovement(toRow(attributed))).toEqual(attributed)
+  })
+
+  it('reads a row from before attribution as having no author, not an empty one', () => {
+    expect(toRow(full).postedBy).toBeNull()
+    expect(toMovement(toRow(full))).not.toHaveProperty('postedBy')
+  })
+
   it('preserves why the stock went', () => {
     const lost: Movement = { ...full, kind: 'remove', reason: 'wildlife' }
     expect(toMovement(toRow(lost))).toEqual(lost)

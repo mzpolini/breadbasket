@@ -109,7 +109,11 @@ export const proposedRuleSchema = z.object({
 
 export type ProposedRule = z.infer<typeof proposedRuleSchema>
 
-export function farmTools(farmId: string) {
+/**
+ * `postedBy` is the signed-in person this conversation belongs to, so anything a
+ * tool writes directly (a note) is attributed like a tap-published movement.
+ */
+export function farmTools(farmId: string, postedBy?: string) {
   return {
     getCurrentStock: tool({
       description:
@@ -247,7 +251,7 @@ export function farmTools(farmId: string) {
       // No tap gate, unlike a movement: this reaches his context, never his
       // public page, so there is nothing here for a buyer to be misled by.
       execute: async ({ note }) => {
-        await remember(farmId, note)
+        await remember(farmId, note, postedBy)
         return { remembered: note }
       },
     }),

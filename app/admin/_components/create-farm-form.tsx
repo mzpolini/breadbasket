@@ -11,24 +11,24 @@ export function CreateFarmForm() {
       onSubmit={(e) => {
         e.preventDefault()
         const formData = new FormData(e.currentTarget)
-        const id = formData.get('id') as string
+        const slug = formData.get('slug') as string
         const name = formData.get('name') as string
         const tagline = formData.get('tagline') as string
         const market = formData.get('market') as string
         startTransition(async () => {
-          await createFarm(id, name, tagline || undefined, market || undefined)
+          await createFarm(slug, name, tagline || undefined, market || undefined)
           ;(e.target as HTMLFormElement).reset()
         })
       }}
       className="space-y-4 max-w-md"
     >
       <div>
-        <label htmlFor="id" className="block text-sm font-medium mb-1">
-          Farm ID (slug)
+        <label htmlFor="slug" className="block text-sm font-medium mb-1">
+          Farm stand URL (/f/…)
         </label>
         <input
-          id="id"
-          name="id"
+          id="slug"
+          name="slug"
           type="text"
           required
           disabled={pending}

@@ -103,6 +103,8 @@ export type Movement = {
    * how the UI knows on reload which proposals he already published.
    */
   proposalId?: string
+  /** Clerk user id of whoever said it. Absent on movements from before attribution. */
+  postedBy?: string
   /** ISO timestamp. */
   occurredAt: string
 }

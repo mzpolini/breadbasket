@@ -13,6 +13,9 @@ export type SessionUser =
   | { role: 'farmer'; clerkId: string; farmId: string }
   | { role: 'pending'; clerkId: string }
 
+/** A signed-in user who may act on a farm. */
+export type FarmActor = Extract<SessionUser, { role: 'admin' | 'farmer' }>
+
 /** Get the current user's session and role. Returns null if not signed in. */
 export async function getSessionUser(): Promise<SessionUser | null> {
   const { userId } = await auth()
@@ -45,8 +48,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
  *
  * Admin can access any farm. Farmer can only access their own.
  * Redirects to sign-in if not authenticated; notFound() if farm is not accessible.
+ *
+ * Returns the user, so a write can be attributed to whoever is signed in —
+ * never to an id the client sent.
  */
-export async function requireFarmAccess(farmId: string): Promise<void> {
+export async function requireFarmAccess(farmId: string): Promise<FarmActor> {
   const user = await getSessionUser()
 
   if (!user) {
@@ -55,12 +61,12 @@ export async function requireFarmAccess(farmId: string): Promise<void> {
 
   if (user.role === 'admin') {
     // Admin can access any farm
-    return
+    return user
   }
 
   if (user.role === 'farmer' && user.farmId === farmId) {
     // Farmer can access their own farm
-    return
+    return user
   }
 
   // Pending, or farmer accessing a different farm
@@ -70,7 +76,7 @@ export async function requireFarmAccess(farmId: string): Promise<void> {
 
   // Farmer accessing a farm that isn't theirs
   const { notFound } = await import('next/navigation')
-  notFound()
+  return notFound()
 }
 
 /**
@@ -96,11 +102,11 @@ export async function requireAdmin(): Promise<void> {
 /**
  * Check farm access in a Route Handler (can't call redirect).
  *
- * Returns { ok: true } if access is granted, { ok: false, status } otherwise.
+ * Returns { ok: true, user } if access is granted, { ok: false, status } otherwise.
  */
 export async function checkFarmAccess(
   farmId: string,
-): Promise<{ ok: true } | { ok: false; status: number }> {
+): Promise<{ ok: true; user: FarmActor } | { ok: false; status: number }> {
   const user = await getSessionUser()
 
   if (!user) {
@@ -108,11 +114,11 @@ export async function checkFarmAccess(
   }
 
   if (user.role === 'admin') {
-    return { ok: true }
+    return { ok: true, user }
   }
 
   if (user.role === 'farmer' && user.farmId === farmId) {
-    return { ok: true }
+    return { ok: true, user }
   }
 
   return { ok: false, status: 403 }

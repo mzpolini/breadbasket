@@ -1,7 +1,7 @@
 # Farm record fields and posted-by attribution
 
 Type: spec
-Status: ready-for-agent
+Status: done (pending db migration)
 Audience: us
 Blocked by: —
 Parent: 30 · Brief item 1

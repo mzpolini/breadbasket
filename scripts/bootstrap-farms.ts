@@ -18,6 +18,7 @@ async function main() {
     .values({
       id: SEED_FARM.id,
       name: SEED_FARM.name,
+      slug: SEED_FARM.id,
       tagline: SEED_FARM.tagline,
       market: SEED_FARM.market,
       logo: SEED_FARM.logo,

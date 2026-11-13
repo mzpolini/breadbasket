@@ -19,12 +19,14 @@ export function toMessageRow(
   farmId: string,
   message: FarmUIMessage,
   createdAt: Date,
+  postedBy?: string,
 ): MessageRow {
   return {
     id: message.id,
     farmId,
     role: message.role,
     parts: message.parts,
+    postedBy: postedBy ?? null,
     // Assigned by the database on insert; carried here so the mapper returns the
     // select shape and the round trip is testable in one line.
     seq: 0,
@@ -71,8 +73,15 @@ export async function messagesForFarm(farmId: string): Promise<FarmUIMessage[]> 
 /**
  * Upserts on the message id, so re-saving a whole turn is idempotent — which is
  * what the SDK's `onEnd` hands us, and what a retried request would repeat.
+ *
+ * `postedBy` is the signed-in person whose turn this is, set on the assistant's
+ * reply too. Fixed at insert like the role: a re-save only updates `parts`.
  */
-export async function saveMessages(farmId: string, batch: FarmUIMessage[]): Promise<void> {
+export async function saveMessages(
+  farmId: string,
+  batch: FarmUIMessage[],
+  postedBy?: string,
+): Promise<void> {
   if (batch.length === 0) return
 
   const now = new Date()
@@ -81,12 +90,13 @@ export async function saveMessages(farmId: string, batch: FarmUIMessage[]): Prom
     .values(
       // `seq` is assigned by the database, so it is dropped from the insert.
       batch.map(({ ...message }) => {
-        const row = toMessageRow(farmId, message, now)
+        const row = toMessageRow(farmId, message, now, postedBy)
         return {
           id: row.id,
           farmId: row.farmId,
           role: row.role,
           parts: row.parts,
+          postedBy: row.postedBy,
           createdAt: row.createdAt,
         }
       }),

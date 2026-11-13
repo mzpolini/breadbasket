@@ -20,6 +20,7 @@ export function toRule(row: HarvestRuleRow): HarvestRule {
     ended: row.ended,
     ...(row.supersedesId ? { supersedesId: row.supersedesId } : {}),
     ...(row.proposalId ? { proposalId: row.proposalId } : {}),
+    ...(row.postedBy ? { postedBy: row.postedBy } : {}),
     createdAt: row.createdAt.toISOString(),
   }
 }
@@ -38,6 +39,7 @@ export function toRuleRow(rule: HarvestRule): HarvestRuleRow {
     ended: rule.ended,
     supersedesId: rule.supersedesId ?? null,
     proposalId: rule.proposalId ?? null,
+    postedBy: rule.postedBy ?? null,
     createdAt: new Date(rule.createdAt),
   }
 }

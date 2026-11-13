@@ -52,6 +52,7 @@ export function toMovement(row: MovementRow): Movement {
     source: row.source as MovementSource,
     sessionId: row.sessionId,
     ...(row.proposalId ? { proposalId: row.proposalId } : {}),
+    ...(row.postedBy ? { postedBy: row.postedBy } : {}),
     occurredAt: row.occurredAt.toISOString(),
   }
 }
@@ -78,6 +79,7 @@ export function toRow(movement: Movement): MovementRow {
     source: movement.source,
     sessionId: movement.sessionId,
     proposalId: movement.proposalId ?? null,
+    postedBy: movement.postedBy ?? null,
     occurredAt: new Date(movement.occurredAt),
   }
 }

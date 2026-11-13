@@ -14,12 +14,24 @@ import {
 /**
  * Farms — multi-tenant from the start.
  *
- * One row per farm. When real farms are added, this grows. The seed farm exists
- * at id='seed-farm' with values from lib/seed/SEED_FARM.
+ * One row per farm, not per farmer: several people can sign in to the same
+ * farm and share one inventory. The seed farm exists at id='seed-farm' with
+ * values from lib/seed/SEED_FARM.
  */
 export const farms = pgTable('farms', {
+  /**
+   * The Breadbasket farm ID. **Immutable** — the MABFC directory joins on it,
+   * so changing one silently orphans a map pin. New farms get `farm_<random>`;
+   * the public URL is `slug`, never this.
+   */
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  /** The farm stand URL segment, `/f/<slug>`. Editable, unlike `id`. */
+  slug: text('slug').notNull().unique(),
+  /** The farm's MABFC directory profile. A farm without one is not in the API. */
+  directoryProfileId: text('directory_profile_id').unique(),
+  /** Only KYF-verified farms get a public farm stand or appear in the API. */
+  kyfVerified: boolean('kyf_verified').notNull().default(false),
   tagline: text('tagline'),
   market: text('market'),
   logo: text('logo'),
@@ -132,6 +144,13 @@ export const movements = pgTable(
     proposalId: text('proposal_id'),
 
     /**
+     * Who said it — the Clerk user id of the person signed in when it was
+     * written. Several people share one farm, so the farm alone can't answer
+     * "who told us there was okra". Null on rows from before attribution.
+     */
+    postedBy: text('posted_by'),
+
+    /**
      * When it happened, not when it was written. The fold sorts on this, and a
      * true-up applied out of sequence discards everything that legitimately
      * followed it — so this is load-bearing rather than metadata.
@@ -233,6 +252,8 @@ export const notes = pgTable(
     farmId: text('farm_id').notNull(),
     /** His own words, kept verbatim — paraphrasing is how meaning gets lost. */
     note: text('note').notNull(),
+    /** Clerk user id of whoever said it. Null on rows from before attribution. */
+    postedBy: text('posted_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -268,6 +289,12 @@ export const messages = pgTable(
     /** The full UIMessage `parts` array: text, tool calls, tool results. */
     parts: jsonb('parts').notNull(),
     /**
+     * The person whose turn this is. On an assistant message, the person whose
+     * message it answered — so the activity log can follow one person's turn
+     * through to what it wrote. Null on rows from before attribution.
+     */
+    postedBy: text('posted_by'),
+    /**
      * Insert order. Timestamps collide inside a millisecond, and a conversation
      * that reloads out of order is worse than one that reloads not at all.
      */
@@ -276,6 +303,7 @@ export const messages = pgTable(
   },
   (table) => [
     index('messages_farm_seq_idx').on(table.farmId, table.seq),
+    index('messages_farm_posted_by_seq_idx').on(table.farmId, table.postedBy, table.seq),
     foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
   ],
 )
@@ -314,6 +342,8 @@ export const harvestRules = pgTable(
     ended: boolean('ended').notNull(),
     supersedesId: text('supersedes_id'),
     proposalId: text('proposal_id'),
+    /** Clerk user id of whoever said it. Null on rows from before attribution. */
+    postedBy: text('posted_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [

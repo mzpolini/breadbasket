@@ -21,6 +21,8 @@ export type CommitContext = {
   occurredAt: string
   /** The read-back these came from, when a read-back is what he tapped. */
   proposalId?: string
+  /** Who is publishing — the session's user, never anything the client sent. */
+  postedBy?: string
   newId: () => string
 }
 
@@ -47,6 +49,7 @@ export function toMovements(proposed: ProposedMovement[], ctx: CommitContext): M
       source: 'farmer',
       sessionId: ctx.sessionId,
       ...(ctx.proposalId ? { proposalId: ctx.proposalId } : {}),
+      ...(ctx.postedBy ? { postedBy: ctx.postedBy } : {}),
       occurredAt: ctx.occurredAt,
     }
   })
@@ -96,6 +99,8 @@ export function soldOut(product: string): ProposedMovement {
 export type RuleCommitContext = {
   farmId: string
   proposalId?: string
+  /** Who is publishing — the session's user, never anything the client sent. */
+  postedBy?: string
   createdAt: string
   newId: () => string
   /** The standing rule for this product, if one exists — the new rule supersedes it. */
@@ -125,6 +130,7 @@ export function toRules(proposed: ProposedRule[], ctx: RuleCommitContext): Harve
       ended: item.ended,
       ...(supersedesId ? { supersedesId } : {}),
       ...(ctx.proposalId ? { proposalId: ctx.proposalId } : {}),
+      ...(ctx.postedBy ? { postedBy: ctx.postedBy } : {}),
       createdAt: ctx.createdAt,
     }
   })

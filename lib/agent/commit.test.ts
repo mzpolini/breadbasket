@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { COUNT_UNIT } from '../ledger'
-import type { ProposedMovement } from './tools'
-import { soldOut, toMovements } from './commit'
+import { balancesFrom, COUNT_UNIT } from '../ledger'
+import type { ProposedMovement, ProposedRule } from './tools'
+import { soldOut, toMovements, toRules } from './commit'
 
 /**
  * The seam where the model's proposal becomes a fact.
@@ -131,6 +131,81 @@ describe('toMovements', () => {
     const [movement] = toMovements([proposal()], ctx)
     expect(movement.source).toBe('farmer')
     expect(movement.farmId).toBe('farm-1')
+  })
+
+  it('records which person published it', () => {
+    const [movement] = toMovements([proposal()], { ...ctx, postedBy: 'user_alice' })
+    expect(movement.postedBy).toBe('user_alice')
+  })
+
+  it('leaves the author off rather than inventing one when there is none', () => {
+    const [movement] = toMovements([proposal()], ctx)
+    expect(movement).not.toHaveProperty('postedBy')
+  })
+})
+
+/**
+ * Brief item 1, "done when": two people on one farm post, and both see one
+ * shared inventory — with each update still traceable to whoever said it.
+ */
+describe('two people on one farm', () => {
+  it('fold into one shared position, each update attributed to its author', () => {
+    const alice = toMovements([proposal({ kind: 'trueup', amountValue: 30 })], {
+      ...ctx,
+      newId: () => 'm-alice',
+      postedBy: 'user_alice',
+      occurredAt: '2026-07-26T09:00:00.000Z',
+    })
+    const bob = toMovements([proposal({ kind: 'add', amountValue: 10, rawPhrase: '10 more' })], {
+      ...ctx,
+      newId: () => 'm-bob',
+      postedBy: 'user_bob',
+      occurredAt: '2026-07-26T10:00:00.000Z',
+    })
+
+    const ledger = [...alice, ...bob]
+    expect(ledger.map((m) => [m.farmId, m.postedBy])).toEqual([
+      ['farm-1', 'user_alice'],
+      ['farm-1', 'user_bob'],
+    ])
+
+    const balances = balancesFrom(ledger, {
+      now: new Date('2026-07-26T12:00:00.000Z'),
+      freshnessDays: 7,
+    })
+    expect(balances).toHaveLength(1)
+    expect(balances[0]).toMatchObject({
+      farmId: 'farm-1',
+      product: 'tomatoes',
+      balance: { status: 'known', quantity: 40 },
+    })
+  })
+})
+
+describe('toRules', () => {
+  const rule = (over: Partial<ProposedRule> = {}): ProposedRule =>
+    ({
+      product: 'Watermelon',
+      heardAs: 'melons',
+      rawPhrase: 'twenty pounds of watermelon every week',
+      amountValue: 20,
+      amountUnit: 'lb',
+      interval: 'weekly',
+      startsOn: null,
+      endsOn: null,
+      ended: false,
+      ...over,
+    }) as ProposedRule
+
+  it('records which person published it', () => {
+    const [stored] = toRules([rule()], {
+      farmId: 'farm-1',
+      createdAt: '2026-07-26T09:00:00.000Z',
+      newId: () => 'r1',
+      currentRuleIdFor: () => undefined,
+      postedBy: 'user_bob',
+    })
+    expect(stored.postedBy).toBe('user_bob')
   })
 })
 
