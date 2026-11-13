@@ -3,9 +3,9 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 /**
  * Routes that don't require authentication.
  *
- * Public routes: buyer page, sign-in/sign-up flow.
+ * Public routes: marketing pages, buyer pages, and sign-in/sign-up flows.
  */
-const isPublicRoute = createRouteMatcher(['/f/(.*)', '/sign-in(.*)', '/sign-up(.*)'])
+const isPublicRoute = createRouteMatcher(['/', '/farmers', '/find', '/partners', '/about', '/privacy', '/sms', '/f/(.*)', '/sign-in(.*)', '/sign-up(.*)'])
 
 /**
  * Clerk proxy middleware for Next.js 16.
