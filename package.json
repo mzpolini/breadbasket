@@ -10,6 +10,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "map": "node scripts/map-status.mjs",
+    "api:spec": "tsx scripts/api-spec.ts",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
     "db:migrate-pilot-beta": "dotenv -e .env.local -- tsx scripts/migrate-pilot-beta.ts",
     "db:studio": "dotenv -e .env.local -- drizzle-kit studio",

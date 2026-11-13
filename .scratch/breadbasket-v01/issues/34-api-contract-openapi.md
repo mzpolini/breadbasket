@@ -1,7 +1,7 @@
 # API contract and generated OpenAPI spec
 
 Type: spec
-Status: ready-for-agent
+Status: done (send to Gabrielle)
 Audience: us
 Blocked by: —
 Parent: 30 · Brief item 3 (spec for Gabrielle before staging)

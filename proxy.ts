@@ -3,9 +3,15 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 /**
  * Routes that don't require authentication.
  *
- * Public routes: buyer page, sign-in/sign-up flow.
+ * Public routes: buyer page, sign-in/sign-up flow, and the API's OpenAPI
+ * document — shared with the directory team, and describing nothing secret.
  */
-const isPublicRoute = createRouteMatcher(['/f/(.*)', '/sign-in(.*)', '/sign-up(.*)'])
+const isPublicRoute = createRouteMatcher([
+  '/f/(.*)',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/openapi.json',
+])
 
 /**
  * Clerk proxy middleware for Next.js 16.
