@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm'
 import { getDb } from '../db'
 import { farms, type FarmRow } from '../db/schema'
 import { newFarmId } from '../farms'
@@ -23,6 +23,29 @@ export async function getFarmBySlug(slug: string): Promise<FarmRow | null> {
 export async function getFarmByDirectoryProfileId(profileId: string): Promise<FarmRow | null> {
   const result = await getDb().select().from(farms).where(eq(farms.directoryProfileId, profileId))
   return result[0] ?? null
+}
+
+/**
+ * The farms the read API may report: KYF-verified **and** mapped to a directory
+ * profile. A farm that is neither is not in the API at all — and the API answers
+ * for one exactly as it does for a farm that doesn't exist, so it can't be used
+ * to find out which farms are on the platform.
+ *
+ * `ids` narrows it; unknown or unmapped ones simply aren't returned.
+ */
+export async function mappedFarms(ids?: string[]): Promise<FarmRow[]> {
+  if (ids && ids.length === 0) return []
+  return getDb()
+    .select()
+    .from(farms)
+    .where(
+      and(
+        eq(farms.kyfVerified, true),
+        isNotNull(farms.directoryProfileId),
+        ids ? inArray(farms.id, ids) : undefined,
+      ),
+    )
+    .orderBy(asc(farms.id))
 }
 
 /**

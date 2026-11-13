@@ -68,3 +68,15 @@ export function farmStandUrl(
   const base = (baseUrl ?? '').replace(/\/+$/, '')
   return `${base}/f/${farm.slug}`
 }
+
+/**
+ * Whether a farm is in the read API: KYF-verified **and** mapped to a directory
+ * profile. The same rule `mappedFarms` puts in its query, kept here so it can be
+ * tested — and applied again to what the query returns, so a loosened `WHERE`
+ * can't quietly publish a farm that isn't supposed to be public.
+ */
+export function isMapped<T extends { kyfVerified: boolean; directoryProfileId: string | null }>(
+  farm: T,
+): farm is T & { directoryProfileId: string } {
+  return farm.kyfVerified && farm.directoryProfileId !== null && farm.directoryProfileId !== ''
+}

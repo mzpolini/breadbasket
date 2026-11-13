@@ -83,6 +83,13 @@ export type ProductBalance = {
    * stale stock instead of as something coming.
    */
   forecast: boolean
+  /**
+   * When he last said anything about this position — **any** claim, forecast
+   * included. Not `balance.confirmedAt`, which deliberately ignores forecasts so
+   * a claim about next month can't make a position publishable; this is only
+   * "when did he last speak", for a surface that has to date a forecast.
+   */
+  lastClaimAt: string
   /** The period a forecast is about, when he gave one. */
   window?: Window
   balance: Balance
@@ -123,6 +130,7 @@ export function balancesFrom(movements: Movement[], opts: FoldOptions): ProductB
       farmId: group[0].farmId,
       product,
       forecast: group[0].state === 'forecast',
+      lastClaimAt: group.map((m) => m.occurredAt).reduce((a, b) => (a > b ? a : b)),
       window: group[0].window,
       balance: foldBalance(group, {
         ...opts,

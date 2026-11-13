@@ -31,14 +31,7 @@ export const SEED_FARM = {
 /** v0.1 identity: one farm behind one secret URL. No login, nothing to remember. */
 export const SEED_FARM_SECRET = 'seed-farm-preview'
 
-/**
- * The freshness window: how long anything he says stays trusted before it is
- * flagged. **Flat seven days, every crop — a temporary POC decision**
- * (NORTHSTAR.md). It is a trust clock (has he checked in?), not a spoilage
- * guess, which is why one number is honest enough for now. Per-crop windows
- * were sketched and deliberately not built.
- */
-export const FRESHNESS_DAYS = 7
+export { FRESHNESS_DAYS } from '../settings'
 
 /**
  * The farm's clock. Every date the agent works out — "in two weeks", "through

@@ -318,3 +318,6 @@ function expiringWithin(expiresAt: string | null, now: Date, hours: number): boo
   const msLeft = Date.parse(expiresAt) - now.getTime()
   return msLeft <= hours * 60 * 60 * 1000
 }
+
+export { apiItems, farmLastUpdated, GONE_REPORTED_DAYS } from './api'
+export type { ApiItemOptions } from './api'

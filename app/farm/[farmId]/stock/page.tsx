@@ -4,7 +4,7 @@ import { requireFarmAccess } from '@/lib/auth/current-user'
 import { activeRules } from '@/lib/cadence'
 import { balancesFrom } from '@/lib/ledger'
 import { farmerInventory } from '@/lib/projections'
-import { FRESHNESS_DAYS } from '@/lib/seed'
+import { FRESHNESS_DAYS } from '@/lib/settings'
 import { rulesForFarm } from '@/lib/storage/harvest-rules'
 import { movementsForFarm } from '@/lib/storage/movements'
 

@@ -82,6 +82,10 @@ vi.mock('../invitations/clerk', () => ({
   sendClerkInvitation: vi.fn(async () => ({ id: 'cinv_2', url: null })),
   revokeClerkInvitation: vi.fn(),
 }))
+vi.mock('../api/keys', () => ({
+  issueKey: vi.fn(async () => ({ id: 'k1', key: 'bb_test_x', prefix: 'bb_test_x' })),
+  revokeKey: vi.fn(async () => true),
+}))
 vi.mock('../invitations/accept', () => ({ acceptInvitationFor: vi.fn(async () => null) }))
 
 import { commitProposed, commitRules, markSoldOut } from '@/app/farm/[farmId]/actions'
@@ -95,6 +99,7 @@ import { assignFarmerToFarm } from '../storage/users'
 import { createFarm as createFarmRecord } from '../storage/farms'
 import { insertInvitation, markRevoked } from '../storage/invitations'
 import { revokeClerkInvitation, sendClerkInvitation } from '../invitations/clerk'
+import { issueKey, revokeKey } from '../api/keys'
 
 const user = (over: Partial<UserRow> & Pick<UserRow, 'id' | 'role'>): UserRow => ({
   farmId: null,
@@ -160,6 +165,8 @@ const adminCalls: [string, () => Promise<unknown>][] = [
   ],
   ['resendInvitation', () => adminActions.resendInvitation('inv-1')],
   ['revokeInvitation', () => adminActions.revokeInvitation('inv-1')],
+  ['issueApiKey', () => adminActions.issueApiKey('MABFC directory: staging')],
+  ['revokeApiKey', () => adminActions.revokeApiKey('k1')],
 ]
 
 beforeEach(() => {
@@ -207,6 +214,8 @@ describe('a farmer', () => {
     expect(sendClerkInvitation).not.toHaveBeenCalled()
     expect(revokeClerkInvitation).not.toHaveBeenCalled()
     expect(markRevoked).not.toHaveBeenCalled()
+    expect(issueKey).not.toHaveBeenCalled()
+    expect(revokeKey).not.toHaveBeenCalled()
   })
 })
 
@@ -236,6 +245,8 @@ describe('an admin', () => {
     expect(insertInvitation).toHaveBeenCalled()
     expect(sendClerkInvitation).toHaveBeenCalled()
     expect(revokeClerkInvitation).toHaveBeenCalled()
+    expect(issueKey).toHaveBeenCalledWith('MABFC directory: staging', 'user_admin')
+    expect(revokeKey).toHaveBeenCalledWith('k1')
   })
 
   it("is refused a chat with no farm, rather than writing to nothing", async () => {

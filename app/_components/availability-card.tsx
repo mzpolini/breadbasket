@@ -8,7 +8,7 @@ import {
   type ForecastListing,
   type StandListing,
 } from '@/lib/projections'
-import { FRESHNESS_DAYS } from '@/lib/seed'
+import { FRESHNESS_DAYS } from '@/lib/settings'
 import { rulesForFarm } from '@/lib/storage/harvest-rules'
 import { movementsForFarm } from '@/lib/storage/movements'
 

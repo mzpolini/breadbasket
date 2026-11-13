@@ -1,6 +1,6 @@
 /**
- * The pilot-beta migration (tickets 31 and 37): farm directory fields, posted-by,
- * and the invitations table.
+ * The pilot-beta migration (tickets 31, 36 and 37): farm directory fields,
+ * posted-by, the invitations table and the API key tables.
  *
  * Run **before** `pnpm db:push`: `pnpm db:migrate-pilot-beta`. drizzle-kit push
  * cannot add `farms.slug` on its own — it is NOT NULL and unique, and existing
@@ -59,6 +59,27 @@ const STATEMENTS = [
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
   `CREATE INDEX IF NOT EXISTS invitations_email_idx ON invitations (email)`,
   `CREATE INDEX IF NOT EXISTS invitations_farm_idx ON invitations (farm_id)`,
+
+  // API keys and their rate windows (ticket 36).
+  `CREATE TABLE IF NOT EXISTS api_keys (
+     id text PRIMARY KEY,
+     name text NOT NULL,
+     prefix text NOT NULL,
+     key_hash text NOT NULL,
+     created_by text NOT NULL,
+     created_at timestamptz NOT NULL,
+     last_used_at timestamptz,
+     revoked_at timestamptz
+   )`,
+  `DO $$ BEGIN
+     ALTER TABLE api_keys ADD CONSTRAINT api_keys_key_hash_unique UNIQUE (key_hash);
+   EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL; END $$`,
+  `CREATE TABLE IF NOT EXISTS api_rate_windows (
+     key_id text NOT NULL,
+     window_start timestamptz NOT NULL,
+     count integer NOT NULL,
+     PRIMARY KEY (key_id, window_start)
+   )`,
 ]
 
 async function main() {

@@ -10,6 +10,7 @@ import {
   normaliseEmail,
   type InvitationRole,
 } from '@/lib/invitations'
+import { issueKey, revokeKey } from '@/lib/api/keys'
 import { revokeClerkInvitation, sendClerkInvitation } from '@/lib/invitations/clerk'
 import {
   createFarm as createFarmRecord,
@@ -208,6 +209,31 @@ export async function revokeInvitation(invitationId: string): Promise<ActionResu
 
   await markRevoked(invitation.id, new Date())
   revalidatePath(`/admin/farms/${invitation.farmId}`)
+  return { ok: true }
+}
+
+/**
+ * Issue an API key. The plaintext comes back **once**, in this result — there is
+ * nowhere it can be read again, so the page has to show it now.
+ */
+export async function issueApiKey(
+  name: string,
+): Promise<ActionResult<{ id: string; key: string; prefix: string }>> {
+  const admin = await requireAdmin()
+
+  const trimmed = name.trim()
+  if (!trimmed) return { ok: false, error: 'Name the key — what is it for?' }
+
+  const issued = await issueKey(trimmed, admin.clerkId)
+  revalidatePath('/admin')
+  return { ok: true, ...issued }
+}
+
+export async function revokeApiKey(id: string): Promise<ActionResult> {
+  await requireAdmin()
+
+  if (!(await revokeKey(id))) return { ok: false, error: 'That key no longer exists.' }
+  revalidatePath('/admin')
   return { ok: true }
 }
 

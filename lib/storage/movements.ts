@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, inArray } from 'drizzle-orm'
 import { getDb } from '../db'
 import { movements, type MovementRow } from '../db/schema'
 import {
@@ -94,6 +94,22 @@ export async function movementsForFarm(farmId: string): Promise<Movement[]> {
     .select()
     .from(movements)
     .where(eq(movements.farmId, farmId))
+    .orderBy(asc(movements.occurredAt))
+
+  return rows.map(toMovement)
+}
+
+/**
+ * Everything ever said about several farms, in **one** query. The directory map
+ * loads every farm at once, so this is the read that has to stay flat as farms
+ * are added — the caller groups the result by `farmId`.
+ */
+export async function movementsForFarms(farmIds: string[]): Promise<Movement[]> {
+  if (farmIds.length === 0) return []
+  const rows = await getDb()
+    .select()
+    .from(movements)
+    .where(inArray(movements.farmId, farmIds))
     .orderBy(asc(movements.occurredAt))
 
   return rows.map(toMovement)

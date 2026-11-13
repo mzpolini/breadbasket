@@ -4,6 +4,7 @@ import {
   doublePrecision,
   foreignKey,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
@@ -400,3 +401,50 @@ export const invitations = pgTable(
 
 export type InvitationRow = typeof invitations.$inferSelect
 export type NewInvitationRow = typeof invitations.$inferInsert
+
+/**
+ * API keys — how the directory (and anyone after it) reads Breadbasket.
+ *
+ * Only a **hash** is stored: the plaintext is shown once, at issue, and cannot
+ * be recovered, so a leaked database doesn't leak working keys. `prefix` is the
+ * first characters of the key — enough for an admin to tell which key is which
+ * on the page, nowhere near enough to use. Revoking is a timestamp, not a
+ * delete, so "which key was that" still has an answer after a rotation.
+ *
+ * Staging and production have separate databases, so a staging key cannot
+ * authenticate against production by construction. The `bb_test_` / `bb_live_`
+ * prefix is a readability check, not the control.
+ */
+export const apiKeys = pgTable('api_keys', {
+  id: text('id').primaryKey(),
+  /** What it's for — "MABFC directory: production". */
+  name: text('name').notNull(),
+  prefix: text('prefix').notNull(),
+  /** SHA-256 hex of the whole key. */
+  keyHash: text('key_hash').notNull().unique(),
+  /** Clerk user id of the admin who issued it, or `cli` for the script. */
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  /** Updated at most once a minute — a write per request would be the API's slowest part. */
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+})
+
+export type ApiKeyRow = typeof apiKeys.$inferSelect
+
+/**
+ * Requests per key per minute — a fixed window, counted in Postgres.
+ *
+ * Deliberately not Upstash or Cloudflare: the volume is three or four
+ * consumers, and Neon is already a dependency. Rows older than an hour are
+ * swept lazily.
+ */
+export const apiRateWindows = pgTable(
+  'api_rate_windows',
+  {
+    keyId: text('key_id').notNull(),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    count: integer('count').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.keyId, table.windowStart] })],
+)

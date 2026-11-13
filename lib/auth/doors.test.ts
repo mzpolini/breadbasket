@@ -30,7 +30,7 @@ const read = (path: string) => readFileSync(path, 'utf8')
 
 const CHECKS = /\b(requireFarmAccess|requireAdmin|checkFarmAccess)\(/
 // The directory's API authenticates a key instead of a session (ticket 36).
-const API_KEY_CHECK = /\bauthenticateApiKey\(/
+const API_KEY_CHECK = /\b(?:authenticateApiKey|apiRoute)\(/
 
 describe('Server Actions', () => {
   const modules = all.filter((f) => /\.tsx?$/.test(f) && /^['"]use server['"]/m.test(read(f)))

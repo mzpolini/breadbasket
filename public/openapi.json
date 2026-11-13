@@ -149,8 +149,20 @@
           "304": {
             "description": "Not modified — the `If-None-Match` ETag still matches. No body.",
             "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
               "ETag": {
                 "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
               }
             }
           },
@@ -183,17 +195,7 @@
           },
           "401": {
             "description": "Missing or unknown API key.",
-            "headers": {
-              "RateLimit-Limit": {
-                "$ref": "#/components/headers/RateLimit-Limit"
-              },
-              "RateLimit-Remaining": {
-                "$ref": "#/components/headers/RateLimit-Remaining"
-              },
-              "RateLimit-Reset": {
-                "$ref": "#/components/headers/RateLimit-Reset"
-              }
-            },
+            "headers": {},
             "content": {
               "application/json": {
                 "schema": {
@@ -210,17 +212,7 @@
           },
           "403": {
             "description": "The API key has been revoked.",
-            "headers": {
-              "RateLimit-Limit": {
-                "$ref": "#/components/headers/RateLimit-Limit"
-              },
-              "RateLimit-Remaining": {
-                "$ref": "#/components/headers/RateLimit-Remaining"
-              },
-              "RateLimit-Reset": {
-                "$ref": "#/components/headers/RateLimit-Reset"
-              }
-            },
+            "headers": {},
             "content": {
               "application/json": {
                 "schema": {
@@ -348,14 +340,12 @@
           "304": {
             "description": "Not modified — the `If-None-Match` ETag still matches. No body.",
             "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
               "ETag": {
                 "$ref": "#/components/headers/ETag"
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or unknown API key.",
-            "headers": {
+              },
               "RateLimit-Limit": {
                 "$ref": "#/components/headers/RateLimit-Limit"
               },
@@ -365,7 +355,11 @@
               "RateLimit-Reset": {
                 "$ref": "#/components/headers/RateLimit-Reset"
               }
-            },
+            }
+          },
+          "401": {
+            "description": "Missing or unknown API key.",
+            "headers": {},
             "content": {
               "application/json": {
                 "schema": {
@@ -382,17 +376,7 @@
           },
           "403": {
             "description": "The API key has been revoked.",
-            "headers": {
-              "RateLimit-Limit": {
-                "$ref": "#/components/headers/RateLimit-Limit"
-              },
-              "RateLimit-Remaining": {
-                "$ref": "#/components/headers/RateLimit-Remaining"
-              },
-              "RateLimit-Reset": {
-                "$ref": "#/components/headers/RateLimit-Reset"
-              }
-            },
+            "headers": {},
             "content": {
               "application/json": {
                 "schema": {

@@ -46,10 +46,22 @@ function componentSchemas(): { [key: string]: Json } {
 
 const ref = (id: string) => ({ $ref: `#/components/schemas/${id}` })
 
-const error = (description: string, code: string, message: string, extraHeaders: string[] = []) => ({
+const RATE_HEADERS = ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset']
+
+/**
+ * `rateHeaders: false` for 401 and 403: no valid key means no limit to report,
+ * and a revoked key's requests aren't counted.
+ */
+const error = (
+  description: string,
+  code: string,
+  message: string,
+  extraHeaders: string[] = [],
+  rateHeaders = true,
+) => ({
   description,
   headers: Object.fromEntries(
-    ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset', ...extraHeaders].map((h) => [
+    [...(rateHeaders ? RATE_HEADERS : []), ...extraHeaders].map((h) => [
       h,
       { $ref: `#/components/headers/${h}` },
     ]),
@@ -71,10 +83,12 @@ const okHeaders = Object.fromEntries(
 const commonErrors = {
   '304': {
     description: 'Not modified — the `If-None-Match` ETag still matches. No body.',
-    headers: { ETag: { $ref: '#/components/headers/ETag' } },
+    headers: Object.fromEntries(
+      ['Cache-Control', 'ETag', ...RATE_HEADERS].map((h) => [h, { $ref: `#/components/headers/${h}` }]),
+    ),
   },
-  '401': error('Missing or unknown API key.', 'unauthorized', 'A valid API key is required.'),
-  '403': error('The API key has been revoked.', 'key_revoked', 'This API key has been revoked.'),
+  '401': error('Missing or unknown API key.', 'unauthorized', 'A valid API key is required.', [], false),
+  '403': error('The API key has been revoked.', 'key_revoked', 'This API key has been revoked.', [], false),
   '429': error(
     `More than ${RATE_LIMIT_PER_MINUTE} requests in a minute on this key.`,
     'rate_limited',
