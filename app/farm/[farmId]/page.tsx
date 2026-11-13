@@ -1,4 +1,5 @@
 import { Chat } from '@/app/_components/chat'
+import { requireFarmAccess } from '@/lib/auth/current-user'
 import { messagesForFarm } from '@/lib/storage/messages'
 import { publishedRuleProposals } from '@/lib/storage/harvest-rules'
 import { publishedProposals } from '@/lib/storage/movements'
@@ -24,6 +25,7 @@ export default async function FarmerChatPage({
   searchParams: Promise<{ v?: string }>
 }) {
   const { farmId } = await params
+  await requireFarmAccess(farmId)
   const verbose = (await searchParams).v === '1'
 
   const [messages, publishedMovements, publishedRules, recorded] = await Promise.all([

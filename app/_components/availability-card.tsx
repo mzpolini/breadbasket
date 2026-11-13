@@ -1,4 +1,4 @@
-import { FarmHeader } from '@/app/_components/farm-header'
+import { FarmHeader, type FarmIdentity } from '@/app/_components/farm-header'
 import { activeRules, type ActiveRule } from '@/lib/cadence'
 import { balancesFrom } from '@/lib/ledger'
 import {
@@ -8,7 +8,7 @@ import {
   type ForecastListing,
   type StandListing,
 } from '@/lib/projections'
-import { FRESHNESS_DAYS } from '@/lib/seed'
+import { FRESHNESS_DAYS } from '@/lib/settings'
 import { rulesForFarm } from '@/lib/storage/harvest-rules'
 import { movementsForFarm } from '@/lib/storage/movements'
 
@@ -25,10 +25,11 @@ import { movementsForFarm } from '@/lib/storage/movements'
  * customer nothing and tells the farmer nothing; a page that visibly ages is
  * honest to one and a nudge to the other.
  *
- * A component rather than a page body because two routes render it — `/f/<farm>`
+ * A component rather than a page body because two routes render it — `/f/<slug>`
  * for buyers and the farmer's own preview — and they must never drift.
  */
-export async function AvailabilityCard({ farmId = 'seed-farm' }: { farmId?: string } = {}) {
+export async function AvailabilityCard({ farm }: { farm: FarmIdentity & { id: string } }) {
+  const farmId = farm.id
   const now = new Date()
   const [movements, rules] = await Promise.all([movementsForFarm(farmId), rulesForFarm(farmId)])
   const balances = balancesFrom(movements, { now, freshnessDays: FRESHNESS_DAYS })
@@ -43,7 +44,7 @@ export async function AvailabilityCard({ farmId = 'seed-farm' }: { farmId?: stri
       className="flex flex-col gap-[26px] rounded-[34px] px-[26px] pb-[34px] pt-[30px]"
       style={{ background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)' }}
     >
-      <FarmHeader />
+      <FarmHeader farm={farm} />
 
       {spoken && (
         <span

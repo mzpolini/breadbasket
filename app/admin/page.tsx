@@ -1,12 +1,17 @@
 import Link from 'next/link'
+import { requireAdmin } from '@/lib/auth/current-user'
 import { listFarms } from '@/lib/storage/farms'
 import { listPendingUsers } from '@/lib/storage/users'
+import { ApiKeysPanel } from '@/app/admin/_components/api-keys-panel'
+import { listApiKeys } from '@/lib/storage/api-keys'
 import { AssignFarmerForm } from '@/app/admin/_components/assign-farmer-form'
 import { CreateFarmForm } from '@/app/admin/_components/create-farm-form'
 
 export default async function AdminPage() {
+  await requireAdmin()
   const farms = await listFarms()
   const pendingUsers = await listPendingUsers()
+  const apiKeys = await listApiKeys()
 
   return (
     <main className="max-w-4xl mx-auto p-6">
@@ -21,9 +26,13 @@ export default async function AdminPage() {
           <div className="space-y-2">
             {farms.map((farm) => (
               <div key={farm.id} className="border rounded p-4">
-                <Link href={`/farm/${farm.id}`} className="text-blue-600 hover:underline">
+                <Link href={`/admin/farms/${farm.id}`} className="text-blue-600 hover:underline">
                   <span className="font-semibold">{farm.name}</span>
                 </Link>
+                <span className="text-sm text-gray-600">
+                  {' '}
+                  · /f/{farm.slug} · {farm.kyfVerified ? 'verified' : 'not verified'}
+                </span>
                 {farm.tagline && <p className="text-sm text-gray-600">{farm.tagline}</p>}
               </div>
             ))}
@@ -35,6 +44,21 @@ export default async function AdminPage() {
       <section className="mb-12 border-t pt-8">
         <h2 className="text-2xl font-semibold mb-4">Create Farm</h2>
         <CreateFarmForm />
+      </section>
+
+      {/* API keys */}
+      <section className="mb-12 border-t pt-8">
+        <h2 className="text-2xl font-semibold mb-4">API keys</h2>
+        <ApiKeysPanel
+          keys={apiKeys.map((key) => ({
+            id: key.id,
+            name: key.name,
+            prefix: key.prefix,
+            createdAt: key.createdAt.toISOString(),
+            lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
+            revoked: key.revokedAt !== null,
+          }))}
+        />
       </section>
 
       {/* Pending Users */}

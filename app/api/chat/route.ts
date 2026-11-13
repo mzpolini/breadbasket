@@ -90,15 +90,22 @@ export async function POST(req: Request) {
   if (!access.ok) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: access.status })
   }
+  // An admin passes for any farm, including none — and a missing id is a bug in
+  // the caller, not a farm to write to.
+  if (typeof farmId !== 'string' || farmId === '') {
+    return new Response(JSON.stringify({ error: 'farmId is required' }), { status: 400 })
+  }
 
-  const tools = farmTools(farmId)
+  // Attributed to whoever is signed in — never to anything in the request body.
+  const postedBy = access.user.clerkId
+  const tools = farmTools(farmId, postedBy)
   const history = await messagesForFarm(farmId)
   const conversation = [...history, message]
 
   // Persist what he said before the model runs. If the request dies mid-stream
   // his sentence is still on the record — losing it is the failure this exists
   // to prevent.
-  await saveMessages(farmId, [message])
+  await saveMessages(farmId, [message], postedBy)
 
   let forModel: FarmUIMessage[]
   try {
@@ -115,7 +122,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: 'anthropic/claude-sonnet-5',
+    model: 'anthropic/claude-sonnet-5.5',
     // Notes ride in the system prompt rather than behind a tool, because the
     // agent must not have to *remember to ask* what it knows about the farm —
     // that is the failure this replaced. The window only holds a dozen turns, so
@@ -148,6 +155,7 @@ export async function POST(req: Request) {
         await saveMessages(
           farmId,
           finished.filter((m) => !alreadyStored.has(m.id)),
+          postedBy,
         )
       },
     }),

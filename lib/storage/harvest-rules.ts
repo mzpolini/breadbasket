@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, inArray } from 'drizzle-orm'
 import type { HarvestRule } from '../cadence'
 import { getDb } from '../db'
 import { harvestRules, type HarvestRuleRow } from '../db/schema'
@@ -20,6 +20,7 @@ export function toRule(row: HarvestRuleRow): HarvestRule {
     ended: row.ended,
     ...(row.supersedesId ? { supersedesId: row.supersedesId } : {}),
     ...(row.proposalId ? { proposalId: row.proposalId } : {}),
+    ...(row.postedBy ? { postedBy: row.postedBy } : {}),
     createdAt: row.createdAt.toISOString(),
   }
 }
@@ -38,6 +39,7 @@ export function toRuleRow(rule: HarvestRule): HarvestRuleRow {
     ended: rule.ended,
     supersedesId: rule.supersedesId ?? null,
     proposalId: rule.proposalId ?? null,
+    postedBy: rule.postedBy ?? null,
     createdAt: new Date(rule.createdAt),
   }
 }
@@ -47,6 +49,17 @@ export async function rulesForFarm(farmId: string): Promise<HarvestRule[]> {
     .select()
     .from(harvestRules)
     .where(eq(harvestRules.farmId, farmId))
+    .orderBy(asc(harvestRules.createdAt))
+  return rows.map(toRule)
+}
+
+/** Several farms' rules in **one** query — see `movementsForFarms`. */
+export async function rulesForFarms(farmIds: string[]): Promise<HarvestRule[]> {
+  if (farmIds.length === 0) return []
+  const rows = await getDb()
+    .select()
+    .from(harvestRules)
+    .where(inArray(harvestRules.farmId, farmIds))
     .orderBy(asc(harvestRules.createdAt))
   return rows.map(toRule)
 }

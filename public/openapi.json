@@ -1,0 +1,755 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Breadbasket availability API",
+    "version": "1.0.0-beta.1",
+    "description": "Read-only availability for farms in the Mid-Atlantic Black Farmers Cooperative directory.\n\nBreadbasket is the source of truth for what a farm has. Farmers tell Breadbasket in plain language; this API reports it as a list of items per farm.\n\n**Which farms appear.** Only farms that are KYF-verified *and* mapped to a directory profile. Any other farm ID behaves exactly like one that does not exist.\n\n**Public data only.** No emails, phone numbers, or anything the farmer said verbatim.\n\n**Quantities and prices** are in the schema so they can be filled in later without a breaking change. During the beta they are always `null`.\n\n**Caching.** Responses may be cached for 5 minutes. Send `If-None-Match` with the last `ETag` to get a `304` when nothing changed.\n\n**Rate limit.** 60 requests per minute per key. Every response carries `RateLimit-*` headers; a `429` carries `Retry-After`.\n\n**Keys.** Development, staging and production keys are separate and do not work across environments. A revoked key gets `403`; ask a Breadbasket admin for a new one."
+  },
+  "servers": [
+    {
+      "url": "https://breadbasket-theta.vercel.app/api/v1",
+      "description": "Development (the endpoints answer here once they are built)"
+    },
+    {
+      "url": "https://breadbasket.example/api/v1",
+      "description": "Production (URL to be confirmed)"
+    },
+    {
+      "url": "https://staging.breadbasket.example/api/v1",
+      "description": "Staging (URL to be confirmed)"
+    }
+  ],
+  "security": [
+    {
+      "apiKey": []
+    }
+  ],
+  "paths": {
+    "/farms/availability": {
+      "get": {
+        "operationId": "listFarmAvailability",
+        "summary": "Availability for every mapped farm, or for a list of farms",
+        "description": "The call the directory map should use: one request returns every farm. Pass `farm_ids` to limit the response to particular farms; IDs that do not exist or are not mapped are left out rather than reported as errors.",
+        "parameters": [
+          {
+            "name": "farm_ids",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated Breadbasket farm IDs, at most 100.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "farm_k3x9q2m7v1ta,farm_7hd02pq8zc4n"
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Every requested farm that exists and is mapped.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkAvailabilityResponse"
+                },
+                "example": {
+                  "generated_at": "2026-11-19T14:05:00Z",
+                  "farms": [
+                    {
+                      "farm_id": "farm_k3x9q2m7v1ta",
+                      "directory_profile_id": "mabfc-0142",
+                      "farm_stand_url": "https://breadbasket.example/f/greenacre",
+                      "last_updated": "2026-11-18T16:22:10Z",
+                      "items": [
+                        {
+                          "product": "collard greens",
+                          "variety": null,
+                          "status": "in_season",
+                          "last_updated": "2026-11-18T16:22:10Z",
+                          "expected_from": null,
+                          "available_until": null,
+                          "quantity": null,
+                          "unit": null,
+                          "price": null
+                        },
+                        {
+                          "product": "sweet potatoes",
+                          "variety": "beauregard",
+                          "status": "in_season",
+                          "last_updated": "2026-11-17T09:41:00Z",
+                          "expected_from": null,
+                          "available_until": "2026-12-20",
+                          "quantity": null,
+                          "unit": null,
+                          "price": null
+                        }
+                      ]
+                    },
+                    {
+                      "farm_id": "farm_7hd02pq8zc4n",
+                      "directory_profile_id": "mabfc-0377",
+                      "farm_stand_url": "https://breadbasket.example/f/sweetwater-acres",
+                      "last_updated": "2026-11-16T12:00:00Z",
+                      "items": [
+                        {
+                          "product": "okra",
+                          "variety": null,
+                          "status": "gone",
+                          "last_updated": "2026-11-16T12:00:00Z",
+                          "expected_from": null,
+                          "available_until": null,
+                          "quantity": null,
+                          "unit": null,
+                          "price": null
+                        },
+                        {
+                          "product": "turnips",
+                          "variety": null,
+                          "status": "coming_soon",
+                          "last_updated": "2026-11-16T12:00:00Z",
+                          "expected_from": "2026-11-30",
+                          "available_until": null,
+                          "quantity": null,
+                          "unit": null,
+                          "price": null
+                        }
+                      ]
+                    },
+                    {
+                      "farm_id": "farm_q1w8e5r2t9yu",
+                      "directory_profile_id": "mabfc-0519",
+                      "farm_stand_url": "https://breadbasket.example/f/three-sisters",
+                      "last_updated": null,
+                      "items": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified — the `If-None-Match` ETag still matches. No body.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            }
+          },
+          "400": {
+            "description": "`farm_ids` is malformed or lists too many farms.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "bad_request",
+                    "message": "farm_ids accepts at most 100 IDs."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown API key.",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "A valid API key is required."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The API key has been revoked.",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "key_revoked",
+                    "message": "This API key has been revoked."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "More than 60 requests in a minute on this key.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Rate limit exceeded. Retry after the number of seconds in Retry-After."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/farms/{farm_id}/availability": {
+      "get": {
+        "operationId": "getFarmAvailability",
+        "summary": "Availability for one farm",
+        "parameters": [
+          {
+            "name": "farm_id",
+            "in": "path",
+            "required": true,
+            "description": "The Breadbasket farm ID.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "farm_k3x9q2m7v1ta"
+          },
+          {
+            "$ref": "#/components/parameters/IfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The farm and its current availability.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FarmAvailability"
+                },
+                "example": {
+                  "farm_id": "farm_k3x9q2m7v1ta",
+                  "directory_profile_id": "mabfc-0142",
+                  "farm_stand_url": "https://breadbasket.example/f/greenacre",
+                  "last_updated": "2026-11-18T16:22:10Z",
+                  "items": [
+                    {
+                      "product": "collard greens",
+                      "variety": null,
+                      "status": "in_season",
+                      "last_updated": "2026-11-18T16:22:10Z",
+                      "expected_from": null,
+                      "available_until": null,
+                      "quantity": null,
+                      "unit": null,
+                      "price": null
+                    },
+                    {
+                      "product": "sweet potatoes",
+                      "variety": "beauregard",
+                      "status": "in_season",
+                      "last_updated": "2026-11-17T09:41:00Z",
+                      "expected_from": null,
+                      "available_until": "2026-12-20",
+                      "quantity": null,
+                      "unit": null,
+                      "price": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified — the `If-None-Match` ETag still matches. No body.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/Cache-Control"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown API key.",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "A valid API key is required."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The API key has been revoked.",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "key_revoked",
+                    "message": "This API key has been revoked."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such farm, or the farm is not KYF-verified and mapped.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Farm not found."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "More than 60 requests in a minute on this key.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "message": "Rate limit exceeded. Retry after the number of seconds in Retry-After."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Send `Authorization: Bearer <key>`. Production keys start `bb_live_`, staging keys `bb_test_`."
+      }
+    },
+    "parameters": {
+      "IfNoneMatch": {
+        "name": "If-None-Match",
+        "in": "header",
+        "required": false,
+        "description": "The `ETag` from a previous response. Returns `304` if unchanged.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "headers": {
+      "Cache-Control": {
+        "description": "`private, max-age=300`",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "ETag": {
+        "description": "A weak validator for the response body.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RateLimit-Limit": {
+        "description": "Requests allowed per minute on this key.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "RateLimit-Remaining": {
+        "description": "Requests left in the current minute.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "RateLimit-Reset": {
+        "description": "Seconds until the current minute resets.",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "Retry-After": {
+        "description": "Seconds to wait before retrying.",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    },
+    "schemas": {
+      "ItemStatus": {
+        "type": "string",
+        "enum": [
+          "in_season",
+          "coming_soon",
+          "gone"
+        ],
+        "description": "`in_season`: the farm has it now. `coming_soon`: the farm expects it — see `expected_from`. `gone`: the farm said it is gone, or has not mentioned it for long enough that it should not be shown as available. Gone items are included for 14 days after they go, so a consumer can remove them, and are then omitted."
+      },
+      "Price": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "const": "USD"
+          },
+          "per": {
+            "type": "string",
+            "description": "What the price is for, e.g. `lb`, `each`, `bunch`."
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "per"
+        ],
+        "additionalProperties": false,
+        "description": "Not yet published. Always `null` during the beta."
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The crop, in the farm's own words, lowercased — e.g. `heirloom tomatoes`."
+          },
+          "variety": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A named variety of the crop — e.g. `brandywine`. `null` when none was named. Always `null` until varieties ship."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ItemStatus"
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the farm last said anything about this item."
+          },
+          "expected_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "A calendar date, `YYYY-MM-DD`, in the farm's local time."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For `coming_soon`: when the farm expects it. `null` when the farm gave no date."
+          },
+          "available_until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date",
+                "description": "A calendar date, `YYYY-MM-DD`, in the farm's local time."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the farm expects it to end, if it said. `null` otherwise."
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Not yet published. Always `null` during the beta."
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Not yet published. Always `null` during the beta."
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "product",
+          "variety",
+          "status",
+          "last_updated",
+          "expected_from",
+          "available_until",
+          "quantity",
+          "unit",
+          "price"
+        ],
+        "additionalProperties": false,
+        "description": "One crop (and, where named, variety) at one farm."
+      },
+      "FarmAvailability": {
+        "type": "object",
+        "properties": {
+          "farm_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The Breadbasket farm ID. Stable: it never changes, so it is safe to store and join on."
+          },
+          "directory_profile_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The MABFC directory profile this farm maps to."
+          },
+          "farm_stand_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The farm's public Breadbasket farm stand page."
+          },
+          "last_updated": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "An RFC 3339 timestamp."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the farm last said anything about its availability. `null` if it never has."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          }
+        },
+        "required": [
+          "farm_id",
+          "directory_profile_id",
+          "farm_stand_url",
+          "last_updated",
+          "items"
+        ],
+        "additionalProperties": false,
+        "description": "A farm that is KYF-verified and mapped to a directory profile, with its current availability."
+      },
+      "BulkAvailabilityResponse": {
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this response was built."
+          },
+          "farms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FarmAvailability"
+            }
+          }
+        },
+        "required": [
+          "generated_at",
+          "farms"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "unauthorized",
+          "key_revoked",
+          "not_found",
+          "bad_request",
+          "rate_limited"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable. Do not match on it; match on `code`."
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

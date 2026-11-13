@@ -24,7 +24,7 @@ export async function notesForFarm(farmId: string, limit = 20): Promise<NoteRow[
  * Keep one thing he said. Blank notes are dropped rather than stored, so a
  * misfired tool call leaves no empty line in his context forever.
  */
-export async function remember(farmId: string, note: string): Promise<void> {
+export async function remember(farmId: string, note: string, postedBy?: string): Promise<void> {
   const text = note.trim()
   if (!text) return
 
@@ -32,6 +32,7 @@ export async function remember(farmId: string, note: string): Promise<void> {
     id: crypto.randomUUID(),
     farmId,
     note: text,
+    postedBy: postedBy ?? null,
     createdAt: new Date(),
   })
 }

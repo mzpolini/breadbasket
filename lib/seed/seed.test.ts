@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { balancesFrom } from '../ledger'
 import { farmerInventory, publicListings } from '../projections'
-import { FRESHNESS_DAYS, seedMovements } from './index'
+import { FRESHNESS_DAYS } from '../settings'
+import { seedMovements } from './index'
 
 /**
  * The seed exists to exercise every state a position can be in — the awkward

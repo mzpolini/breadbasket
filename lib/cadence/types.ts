@@ -36,6 +36,8 @@ export type HarvestRule = {
   supersedesId?: string
   /** The read-back this came from. */
   proposalId?: string
+  /** Clerk user id of whoever said it. Absent on rules from before attribution. */
+  postedBy?: string
   /** When he said it. Doubles as "last spoken about" for the freshness clock. */
   createdAt: string
 }

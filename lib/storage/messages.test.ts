@@ -33,6 +33,7 @@ const row = (over: Partial<MessageRow> = {}): MessageRow => ({
   role: 'assistant',
   parts: withCard.parts,
   seq: 1,
+  postedBy: null,
   createdAt: new Date('2026-07-26T09:00:00.000Z'),
   ...over,
 })
@@ -44,6 +45,12 @@ const text = (id: string, role: 'user' | 'assistant'): FarmUIMessage => ({
 })
 
 describe('message round trip', () => {
+  it('records who the turn belongs to, and nobody when there was no one signed in', () => {
+    const message = text('msg-9', 'user')
+    expect(toMessageRow('farm-1', message, new Date(), 'user_alice').postedBy).toBe('user_alice')
+    expect(toMessageRow('farm-1', message, new Date()).postedBy).toBeNull()
+  })
+
   it('preserves a plain text message', () => {
     const message = text('msg-9', 'user')
     expect(toUIMessage(toMessageRow('farm-1', message, new Date()))).toEqual(message)

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { soldOut, toMovements, toRules } from '@/lib/agent/commit'
 import type { ProposedMovement, ProposedRule } from '@/lib/agent/tools'
 import { activeRules } from '@/lib/cadence'
-import { FRESHNESS_DAYS } from '@/lib/seed'
+import { FRESHNESS_DAYS } from '@/lib/settings'
 import { appendRules, rulesForFarm } from '@/lib/storage/harvest-rules'
 import { requireFarmAccess } from '@/lib/auth/current-user'
 import { appendMovements } from '@/lib/storage/movements'
@@ -27,7 +27,7 @@ export async function commitProposed(
   proposed: ProposedMovement[],
   proposalId?: string,
 ) {
-  await requireFarmAccess(farmId)
+  const user = await requireFarmAccess(farmId)
 
   // The store decides whether this read-back has already been published, so the
   // promise holds no matter what the client does with it (ADR 0003).
@@ -40,6 +40,7 @@ export async function commitProposed(
     sessionId: crypto.randomUUID(),
     occurredAt: new Date().toISOString(),
     proposalId,
+    postedBy: user.clerkId,
     newId: () => crypto.randomUUID(),
   })
 
@@ -49,7 +50,7 @@ export async function commitProposed(
     proposed.map((item) => teach(farmId, item.heardAs, item.product.toLowerCase().trim())),
   )
 
-  revalidatePath(`/f/${farmId}`)
+  revalidatePath('/f/[farm]', 'page')
   revalidatePath('/farm', 'layout')
 
   return { written: movements.length }
@@ -61,7 +62,7 @@ export async function commitProposed(
  * and end are all the same write.
  */
 export async function commitRules(farmId: string, proposed: ProposedRule[], proposalId?: string) {
-  await requireFarmAccess(farmId)
+  const user = await requireFarmAccess(farmId)
 
   if (proposalId && !(await publishOnce(farmId, proposalId))) {
     return { written: 0, alreadyPublished: true }
@@ -74,6 +75,7 @@ export async function commitRules(farmId: string, proposed: ProposedRule[], prop
   const rules = toRules(proposed, {
     farmId,
     proposalId,
+    postedBy: user.clerkId,
     createdAt: now.toISOString(),
     newId: () => crypto.randomUUID(),
     currentRuleIdFor: (product) => byProduct.get(product),
@@ -84,7 +86,7 @@ export async function commitRules(farmId: string, proposed: ProposedRule[], prop
     proposed.map((item) => teach(farmId, item.heardAs, item.product.toLowerCase().trim())),
   )
 
-  revalidatePath(`/f/${farmId}`)
+  revalidatePath('/f/[farm]', 'page')
   revalidatePath('/farm', 'layout')
 
   return { written: rules.length }
@@ -92,18 +94,19 @@ export async function commitRules(farmId: string, proposed: ProposedRule[], prop
 
 /** "Sold out" — the shape of it, and why, is in `soldOut`. */
 export async function markSoldOut(farmId: string, product: string) {
-  await requireFarmAccess(farmId)
+  const user = await requireFarmAccess(farmId)
 
   await appendMovements(
     toMovements([soldOut(product)], {
       farmId,
       sessionId: crypto.randomUUID(),
       occurredAt: new Date().toISOString(),
+      postedBy: user.clerkId,
       newId: () => crypto.randomUUID(),
     }),
   )
 
-  revalidatePath(`/f/${farmId}`)
+  revalidatePath('/f/[farm]', 'page')
   revalidatePath('/farm', 'layout')
 
   return { soldOut: product }

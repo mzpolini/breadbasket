@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { StockView } from '@/app/_components/stock-view'
+import { requireFarmAccess } from '@/lib/auth/current-user'
 import { activeRules } from '@/lib/cadence'
 import { balancesFrom } from '@/lib/ledger'
 import { farmerInventory } from '@/lib/projections'
-import { FRESHNESS_DAYS } from '@/lib/seed'
+import { FRESHNESS_DAYS } from '@/lib/settings'
 import { rulesForFarm } from '@/lib/storage/harvest-rules'
 import { movementsForFarm } from '@/lib/storage/movements'
 
@@ -24,6 +25,7 @@ export default async function FarmerStockPage({
   params: Promise<{ farmId: string }>
 }) {
   const { farmId } = await params
+  await requireFarmAccess(farmId)
   const now = new Date()
 
   const [movements, storedRules] = await Promise.all([movementsForFarm(farmId), rulesForFarm(farmId)])

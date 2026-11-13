@@ -1,6 +1,8 @@
+import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { FarmNav } from '@/app/_components/farm-nav'
 import { requireFarmAccess } from '@/lib/auth/current-user'
+import { getFarm } from '@/lib/storage/farms'
 
 /**
  * The farmer's shell — one phone-shaped frame that every surface lives inside.
@@ -10,8 +12,9 @@ import { requireFarmAccess } from '@/lib/auth/current-user'
  * navigation, and each page scrolls *within* the frame rather than scrolling the
  * document out from under it.
  *
- * Farm access is checked here via Clerk + role verification, so identity is
- * verified once at the boundary rather than in each page.
+ * Farm access is checked here so a refused visitor never sees the shell — but a
+ * layout does not re-render when he moves between its pages, so it is not the
+ * check that protects them. Each page asks for access itself.
  *
  * FarmNav reads search params, which means Suspense: without it the whole shell
  * would opt into dynamic rendering and the nav would block first paint.
@@ -28,10 +31,14 @@ export default async function FarmLayout({
   // Verify access — requireFarmAccess redirects/notFound as needed
   await requireFarmAccess(farmId)
 
+  // An admin may ask for a farm that doesn't exist; that is a 404, not a crash.
+  const farm = await getFarm(farmId)
+  if (!farm) notFound()
+
   return (
     <div className="phone">
       <Suspense fallback={<div className="h-[102px] flex-none" />}>
-        <FarmNav farmId={farmId} />
+        <FarmNav farmId={farmId} farmName={farm.name} />
       </Suspense>
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>

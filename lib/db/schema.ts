@@ -4,6 +4,7 @@ import {
   doublePrecision,
   foreignKey,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
@@ -14,12 +15,24 @@ import {
 /**
  * Farms — multi-tenant from the start.
  *
- * One row per farm. When real farms are added, this grows. The seed farm exists
- * at id='seed-farm' with values from lib/seed/SEED_FARM.
+ * One row per farm, not per farmer: several people can sign in to the same
+ * farm and share one inventory. The seed farm exists at id='seed-farm' with
+ * values from lib/seed/SEED_FARM.
  */
 export const farms = pgTable('farms', {
+  /**
+   * The Breadbasket farm ID. **Immutable** — the MABFC directory joins on it,
+   * so changing one silently orphans a map pin. New farms get `farm_<random>`;
+   * the public URL is `slug`, never this.
+   */
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  /** The farm stand URL segment, `/f/<slug>`. Editable, unlike `id`. */
+  slug: text('slug').notNull().unique(),
+  /** The farm's MABFC directory profile. A farm without one is not in the API. */
+  directoryProfileId: text('directory_profile_id').unique(),
+  /** Only KYF-verified farms get a public farm stand or appear in the API. */
+  kyfVerified: boolean('kyf_verified').notNull().default(false),
   tagline: text('tagline'),
   market: text('market'),
   logo: text('logo'),
@@ -132,6 +145,13 @@ export const movements = pgTable(
     proposalId: text('proposal_id'),
 
     /**
+     * Who said it — the Clerk user id of the person signed in when it was
+     * written. Several people share one farm, so the farm alone can't answer
+     * "who told us there was okra". Null on rows from before attribution.
+     */
+    postedBy: text('posted_by'),
+
+    /**
      * When it happened, not when it was written. The fold sorts on this, and a
      * true-up applied out of sequence discards everything that legitimately
      * followed it — so this is load-bearing rather than metadata.
@@ -233,6 +253,8 @@ export const notes = pgTable(
     farmId: text('farm_id').notNull(),
     /** His own words, kept verbatim — paraphrasing is how meaning gets lost. */
     note: text('note').notNull(),
+    /** Clerk user id of whoever said it. Null on rows from before attribution. */
+    postedBy: text('posted_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -268,6 +290,12 @@ export const messages = pgTable(
     /** The full UIMessage `parts` array: text, tool calls, tool results. */
     parts: jsonb('parts').notNull(),
     /**
+     * The person whose turn this is. On an assistant message, the person whose
+     * message it answered — so the activity log can follow one person's turn
+     * through to what it wrote. Null on rows from before attribution.
+     */
+    postedBy: text('posted_by'),
+    /**
      * Insert order. Timestamps collide inside a millisecond, and a conversation
      * that reloads out of order is worse than one that reloads not at all.
      */
@@ -276,6 +304,7 @@ export const messages = pgTable(
   },
   (table) => [
     index('messages_farm_seq_idx').on(table.farmId, table.seq),
+    index('messages_farm_posted_by_seq_idx').on(table.farmId, table.postedBy, table.seq),
     foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
   ],
 )
@@ -314,6 +343,8 @@ export const harvestRules = pgTable(
     ended: boolean('ended').notNull(),
     supersedesId: text('supersedes_id'),
     proposalId: text('proposal_id'),
+    /** Clerk user id of whoever said it. Null on rows from before attribution. */
+    postedBy: text('posted_by'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -324,3 +355,96 @@ export const harvestRules = pgTable(
 )
 
 export type HarvestRuleRow = typeof harvestRules.$inferSelect
+
+
+/**
+ * Invitations — who an admin has asked in, and to which farm.
+ *
+ * Ours rather than Clerk's, because Clerk's invitation knows an email and not a
+ * farm or a role. The first time the invited person signs in, `getSessionUser`
+ * matches their verified Clerk email to an open row here and creates their
+ * `users` row — so onboarding needs no webhook to set up or keep running.
+ *
+ * **Open** = neither accepted nor revoked. The attestation is the admin's claim
+ * that the email matches the person's MABFC member record: there is no co-op
+ * integration in the beta, so a human vouches for it, and we keep who and when.
+ */
+export const invitations = pgTable(
+  'invitations',
+  {
+    id: text('id').primaryKey(),
+    /** Stored lowercased: the match at sign-in is on this. */
+    email: text('email').notNull(),
+    farmId: text('farm_id').notNull(),
+    /** 'farmer' | 'admin'. */
+    role: text('role').notNull(),
+    /** Replaced on resend — Clerk can't re-send, so a resend is a new invitation. */
+    clerkInvitationId: text('clerk_invitation_id'),
+    /**
+     * Clerk's link for this invitation. Shown to the admin so a person whose
+     * email never arrived can be sent it by hand.
+     */
+    url: text('url'),
+    invitedBy: text('invited_by').notNull(),
+    invitedAt: timestamp('invited_at', { withTimezone: true }).notNull(),
+    attestedBy: text('attested_by').notNull(),
+    attestedAt: timestamp('attested_at', { withTimezone: true }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('invitations_email_idx').on(table.email),
+    index('invitations_farm_idx').on(table.farmId),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
+  ],
+)
+
+export type InvitationRow = typeof invitations.$inferSelect
+export type NewInvitationRow = typeof invitations.$inferInsert
+
+/**
+ * API keys — how the directory (and anyone after it) reads Breadbasket.
+ *
+ * Only a **hash** is stored: the plaintext is shown once, at issue, and cannot
+ * be recovered, so a leaked database doesn't leak working keys. `prefix` is the
+ * first characters of the key — enough for an admin to tell which key is which
+ * on the page, nowhere near enough to use. Revoking is a timestamp, not a
+ * delete, so "which key was that" still has an answer after a rotation.
+ *
+ * Staging and production have separate databases, so a staging key cannot
+ * authenticate against production by construction. The `bb_test_` / `bb_live_`
+ * prefix is a readability check, not the control.
+ */
+export const apiKeys = pgTable('api_keys', {
+  id: text('id').primaryKey(),
+  /** What it's for — "MABFC directory: production". */
+  name: text('name').notNull(),
+  prefix: text('prefix').notNull(),
+  /** SHA-256 hex of the whole key. */
+  keyHash: text('key_hash').notNull().unique(),
+  /** Clerk user id of the admin who issued it, or `cli` for the script. */
+  createdBy: text('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  /** Updated at most once a minute — a write per request would be the API's slowest part. */
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+})
+
+export type ApiKeyRow = typeof apiKeys.$inferSelect
+
+/**
+ * Requests per key per minute — a fixed window, counted in Postgres.
+ *
+ * Deliberately not Upstash or Cloudflare: the volume is three or four
+ * consumers, and Neon is already a dependency. Rows older than an hour are
+ * swept lazily.
+ */
+export const apiRateWindows = pgTable(
+  'api_rate_windows',
+  {
+    keyId: text('key_id').notNull(),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    count: integer('count').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.keyId, table.windowStart] })],
+)

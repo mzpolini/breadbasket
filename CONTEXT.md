@@ -44,6 +44,8 @@ Every movement carries both, independently:
 - **Farm stand** — the farm's public page for customers. Shows *availability only* — never quantities, units, or measured/estimated. Split into **available now** (on-hand positions) and **coming soon** (harvest rules, shown as the farmer's sentence).
 - **In season** — a storefront label. Applies to everything currently on the stand; it carries no data and is not a state.
 - **Freshness** — shown to the customer as how long ago the farmer last spoke. Flagged items stay on the stand, visibly stale. The stale page is the farmer's reminder to check in; there is no other nudge in the POC.
+- **Gone** — what the directory API reports for an item the farm has *none left* of, or hasn't mentioned for **N days** (default 7, `GONE_AFTER_DAYS`). API only: the stand never says gone, it **flags**. A map pin has no greying, so the API has to say yes or no; the stand can show a stale item as the farmer's reminder to check in. Reported for 14 days after it goes, then dropped, so the directory can take its pin down.
+- **Mapped farm** — a farm that is KYF-verified *and* has a directory profile ID. Only mapped farms are in the API; any other farm ID is answered as if it didn't exist.
 - **Wholesale account** — a future, gated buyer view of the same inventory that *does* show quantities. Out of scope for the POC.
 
 ## Working with the founder
