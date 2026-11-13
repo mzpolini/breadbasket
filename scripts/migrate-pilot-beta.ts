@@ -1,11 +1,15 @@
 /**
- * The pilot-beta migration (ticket 31): farm directory fields and posted-by.
+ * The pilot-beta migration (tickets 31 and 37): farm directory fields, posted-by,
+ * and the invitations table.
  *
  * Run **before** `pnpm db:push`: `pnpm db:migrate-pilot-beta`. drizzle-kit push
  * cannot add `farms.slug` on its own — it is NOT NULL and unique, and existing
  * farms have no value to give it. This adds it nullable, backfills `slug = id`
  * (so `/f/seed-farm` keeps working), then tightens it. Everything else here is
  * a nullable column or an index, added the same way push would add it.
+ *
+ * The `invitations` table (37) is brand new, so `db:push` would create it too;
+ * it is here so one script brings a database fully up to date.
  *
  * Idempotent: every statement is guarded, so re-running is a no-op. Constraint
  * and index names match what drizzle generates from the schema, so a `db:push`
@@ -33,6 +37,28 @@ const STATEMENTS = [
   `ALTER TABLE notes ADD COLUMN IF NOT EXISTS posted_by text`,
   `ALTER TABLE messages ADD COLUMN IF NOT EXISTS posted_by text`,
   `CREATE INDEX IF NOT EXISTS messages_farm_posted_by_seq_idx ON messages (farm_id, posted_by, seq)`,
+
+  // Invitations (ticket 37).
+  `CREATE TABLE IF NOT EXISTS invitations (
+     id text PRIMARY KEY,
+     email text NOT NULL,
+     farm_id text NOT NULL,
+     role text NOT NULL,
+     clerk_invitation_id text,
+     url text,
+     invited_by text NOT NULL,
+     invited_at timestamptz NOT NULL,
+     attested_by text NOT NULL,
+     attested_at timestamptz NOT NULL,
+     accepted_at timestamptz,
+     revoked_at timestamptz
+   )`,
+  `DO $$ BEGIN
+     ALTER TABLE invitations ADD CONSTRAINT invitations_farm_id_farms_id_fk
+       FOREIGN KEY (farm_id) REFERENCES farms (id);
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `CREATE INDEX IF NOT EXISTS invitations_email_idx ON invitations (email)`,
+  `CREATE INDEX IF NOT EXISTS invitations_farm_idx ON invitations (farm_id)`,
 ]
 
 async function main() {

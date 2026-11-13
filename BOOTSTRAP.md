@@ -132,6 +132,35 @@ As the farmer:
 4. Click "Sounds good" to add it to the ledger
 5. Refresh the page — the movement should persist
 
+## Inviting people (Clerk configuration)
+
+Nobody gets in by signing up. An admin invites them from `/admin/farms/<farm id>`; Clerk
+sends the email, and the first time the invited person signs in, their verified email is
+matched to the invitation and that creates their account on the right farm.
+
+Set this up **once per Clerk instance** — dev and production are separate, so do it twice:
+
+1. Clerk dashboard → **User & authentication → Restrictions** → turn on **Restricted**
+   sign-up mode, so only invited emails can create an account.
+2. **User & authentication → Email, phone, username**: email address is the only
+   identifier. Turn off phone and username.
+3. **SSO connections**: turn off every social connection (Google, Facebook, …).
+4. Set `PUBLIC_BASE_URL` in the environment (e.g. `https://app.example.org`, no trailing
+   slash). Invitation links land on `<PUBLIC_BASE_URL>/sign-up`, and farm stand URLs are
+   built from it. Without it the invitation uses the host the admin was on.
+
+Then check it end to end on the instance you're about to use — an invitation to an address
+you own, from the admin page: the email arrives, the link works, and you land on the
+farm's chat. If email delivery fails, the invitation's row on the admin page shows Clerk's
+link; send that by hand.
+
+### Making an admin
+
+Invite them from any farm's admin page with the role set to **admin**. For the very first
+admin, when there is nobody to invite from, use `pnpm tsx scripts/make-admin.ts <clerk id>`
+after they've signed up. Keep the list of who is an admin in your own notes, not in the
+repo.
+
 ## Troubleshooting
 
 ### "Cannot find module '@clerk/nextjs'" or similar

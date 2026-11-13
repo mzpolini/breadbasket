@@ -1,7 +1,7 @@
 # Admin: add a farm and invite its people
 
 Type: spec
-Status: ready-for-agent
+Status: done (pending db migration, Clerk settings, prod email check)
 Audience: us
 Blocked by: 31
 Parent: 30 · Brief item 4.1
@@ -39,3 +39,20 @@ There is no webhook to set up or keep running.
 ## Done when
 
 An admin adds a farm, invites a person, that person accepts from the email and lands on the right farm's chat as a farmer.
+
+## Outcome
+
+- Add-farm form takes name, slug, directory profile ID, KYF checkbox, tagline, market; the ID is generated. Duplicate slug or profile ID is refused with a message.
+- `/admin/farms/[farmId]`: people on the farm, every invitation with its state, an invite form with the required MABFC attestation (who and when are stored), and **Resend** / **Revoke**. An open invitation shows Clerk's link for sending by hand.
+- Clerk can't re-send an email, so *resend* revokes the old Clerk invitation and creates a new one under the same row.
+- Accepting: in `getSessionUser`, a person with no `users` row (or a farmer with no farm) has their **verified** Clerk email matched to an open invitation, which creates the row. No webhook. A farmer who signed up before being invited is assigned by it. The row is written before the invitation is marked accepted, so a crash in between can't spend an invitation with nobody let in.
+- If Clerk refuses to send, the invitation row is deleted rather than left looking like it's waiting.
+- New `invitations` table, added to `scripts/migrate-pilot-beta.ts`.
+
+Tests: `lib/invitations/*.test.ts`, plus the admin actions inside `lib/auth/roles.test.ts`.
+
+**Still for a human (cannot be done from code):**
+
+1. Run `pnpm db:migrate-pilot-beta`, then `pnpm db:push` (31 is waiting on this too).
+2. Per Clerk instance: Restricted sign-up, email-only identifier, no social connections. Runbook in `BOOTSTRAP.md`. Set `PUBLIC_BASE_URL`.
+3. Send an invitation to an address you own on **production** before Sunday: email arrives, link works, you land on the farm's chat. *Not verified — nothing here has been run against Clerk.*

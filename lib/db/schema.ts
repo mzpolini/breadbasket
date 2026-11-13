@@ -354,3 +354,49 @@ export const harvestRules = pgTable(
 )
 
 export type HarvestRuleRow = typeof harvestRules.$inferSelect
+
+
+/**
+ * Invitations — who an admin has asked in, and to which farm.
+ *
+ * Ours rather than Clerk's, because Clerk's invitation knows an email and not a
+ * farm or a role. The first time the invited person signs in, `getSessionUser`
+ * matches their verified Clerk email to an open row here and creates their
+ * `users` row — so onboarding needs no webhook to set up or keep running.
+ *
+ * **Open** = neither accepted nor revoked. The attestation is the admin's claim
+ * that the email matches the person's MABFC member record: there is no co-op
+ * integration in the beta, so a human vouches for it, and we keep who and when.
+ */
+export const invitations = pgTable(
+  'invitations',
+  {
+    id: text('id').primaryKey(),
+    /** Stored lowercased: the match at sign-in is on this. */
+    email: text('email').notNull(),
+    farmId: text('farm_id').notNull(),
+    /** 'farmer' | 'admin'. */
+    role: text('role').notNull(),
+    /** Replaced on resend — Clerk can't re-send, so a resend is a new invitation. */
+    clerkInvitationId: text('clerk_invitation_id'),
+    /**
+     * Clerk's link for this invitation. Shown to the admin so a person whose
+     * email never arrived can be sent it by hand.
+     */
+    url: text('url'),
+    invitedBy: text('invited_by').notNull(),
+    invitedAt: timestamp('invited_at', { withTimezone: true }).notNull(),
+    attestedBy: text('attested_by').notNull(),
+    attestedAt: timestamp('attested_at', { withTimezone: true }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('invitations_email_idx').on(table.email),
+    index('invitations_farm_idx').on(table.farmId),
+    foreignKey({ columns: [table.farmId], foreignColumns: [farms.id] }),
+  ],
+)
+
+export type InvitationRow = typeof invitations.$inferSelect
+export type NewInvitationRow = typeof invitations.$inferInsert

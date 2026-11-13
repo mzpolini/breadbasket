@@ -5,12 +5,18 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
  *
  * Public routes: buyer page, sign-in/sign-up flow, and the API's OpenAPI
  * document — shared with the directory team, and describing nothing secret.
+ *
+ * `/api/v1/*` is public **to Clerk only**: the directory has no session, so
+ * those handlers authenticate an API key themselves (ticket 36). A handler added
+ * under it that forgets to is open to the world — which is why a test fails for
+ * any route handler that checks nothing.
  */
 const isPublicRoute = createRouteMatcher([
   '/f/(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/openapi.json',
+  '/api/v1/(.*)',
 ])
 
 /**

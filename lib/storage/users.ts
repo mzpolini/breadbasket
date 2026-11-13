@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { getDb } from '../db'
 import { users, type UserRow } from '../db/schema'
 
@@ -75,4 +75,42 @@ export async function listPendingUsers(): Promise<UserRow[]> {
     .where(eq(users.role, 'farmer'))
 
   return result.filter((u) => !u.farmId)
+}
+
+/** A user by email, case-insensitively — null when nobody has that email. */
+export async function getUserByEmail(email: string): Promise<UserRow | null> {
+  const result = await getDb()
+    .select()
+    .from(users)
+    .where(eq(sql`lower(${users.email})`, email.trim().toLowerCase()))
+  return result[0] ?? null
+}
+
+/** Everyone signed in to a farm. */
+export async function listUsersByFarm(farmId: string): Promise<UserRow[]> {
+  return getDb().select().from(users).where(eq(users.farmId, farmId))
+}
+
+/**
+ * Create a user only if there is no row for them yet.
+ *
+ * What accepting an invitation uses: two first page loads can race, and the
+ * loser must not fail on the primary key — nor overwrite what the winner wrote.
+ */
+export async function createUserIfAbsent(user: {
+  clerkId: string
+  role: 'farmer' | 'admin'
+  email: string
+  farmId: string
+}): Promise<void> {
+  await getDb()
+    .insert(users)
+    .values({
+      id: user.clerkId,
+      role: user.role,
+      email: user.email,
+      farmId: user.farmId,
+      createdAt: new Date(),
+    })
+    .onConflictDoNothing()
 }

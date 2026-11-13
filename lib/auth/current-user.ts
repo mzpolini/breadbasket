@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { acceptInvitationFor } from '../invitations/accept'
+import type { UserRow } from '../db/schema'
 import { getUserRecord } from '../storage/users'
 
 /**
@@ -13,6 +15,9 @@ export type SessionUser =
   | { role: 'farmer'; clerkId: string; farmId: string }
   | { role: 'pending'; clerkId: string }
 
+/** A signed-in admin — what `requireAdmin` hands back, so a write can say who did it. */
+export type AdminActor = Extract<SessionUser, { role: 'admin' }>
+
 /** A signed-in user who may act on a farm. */
 export type FarmActor = Extract<SessionUser, { role: 'admin' | 'farmer' }>
 
@@ -21,7 +26,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const { userId } = await auth()
   if (!userId) return null
 
-  const user = await getUserRecord(userId)
+  let user = await getUserRecord(userId)
+
+  // Nobody is let in by signing up — only by being invited. The first time an
+  // invited person lands here (no row yet, or a farmer never given a farm), their
+  // verified email is matched to an open invitation and that creates their row.
+  if (!user || (user.role === 'farmer' && !user.farmId)) {
+    user = (await takeUpInvitation(userId)) ?? user
+  }
+
   if (!user) {
     // Signed in via Clerk but not yet in our users table — treat as pending.
     return { role: 'pending', clerkId: userId }
@@ -41,6 +54,25 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   // Shouldn't happen, but treat as pending to be safe.
   return { role: 'pending', clerkId: userId }
+}
+
+/**
+ * The invitation, if any, for the person who just signed in.
+ *
+ * Only a **verified** primary email counts. A failure to reach Clerk is not a
+ * reason to break the page: the person stays pending and the next request tries
+ * again.
+ */
+async function takeUpInvitation(clerkId: string): Promise<UserRow | null> {
+  try {
+    const clerkUser = await currentUser()
+    const email = clerkUser?.primaryEmailAddress
+    if (!email || email.verification?.status !== 'verified') return null
+    return await acceptInvitationFor(clerkId, email.emailAddress)
+  } catch (error) {
+    console.error('could not check for an invitation', error)
+    return null
+  }
 }
 
 /**
@@ -83,8 +115,10 @@ export async function requireFarmAccess(farmId: string): Promise<FarmActor> {
  * Require the user to be an admin.
  *
  * Redirects to sign-in if not authenticated; notFound() if not an admin.
+ *
+ * Returns the admin, so a write can be attributed to whoever is signed in.
  */
-export async function requireAdmin(): Promise<void> {
+export async function requireAdmin(): Promise<AdminActor> {
   const user = await getSessionUser()
 
   if (!user) {
@@ -92,11 +126,11 @@ export async function requireAdmin(): Promise<void> {
   }
 
   if (user.role === 'admin') {
-    return
+    return user
   }
 
   const { notFound } = await import('next/navigation')
-  notFound()
+  return notFound()
 }
 
 /**

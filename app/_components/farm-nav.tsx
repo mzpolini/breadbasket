@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { SEED_FARM } from '@/lib/seed'
 
 /**
  * The farm's header, in the language of design `1a`.
@@ -21,7 +20,7 @@ import { SEED_FARM } from '@/lib/seed'
  * written in Organic's vocabulary rather than invented: accent pill for the
  * current surface, muted for the rest, thumb-sized because this is one-handed.
  */
-export function FarmNav({ farmId }: { farmId: string }) {
+export function FarmNav({ farmId, farmName }: { farmId: string; farmName: string }) {
   const pathname = usePathname()
   const params = useSearchParams()
 
@@ -49,7 +48,7 @@ export function FarmNav({ farmId }: { farmId: string }) {
             fontFamily: 'var(--font-caprasimo)',
           }}
         >
-          {SEED_FARM.name.charAt(0)}
+          {farmName.charAt(0)}
         </span>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -57,7 +56,7 @@ export function FarmNav({ farmId }: { farmId: string }) {
             className="truncate text-[16px] leading-[1.15]"
             style={{ fontFamily: 'var(--font-caprasimo)' }}
           >
-            {SEED_FARM.name}
+            {farmName}
           </span>
           <span
             className="meta truncate text-[11px] leading-[1.35]"

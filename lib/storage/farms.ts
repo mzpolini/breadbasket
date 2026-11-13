@@ -19,6 +19,12 @@ export async function getFarmBySlug(slug: string): Promise<FarmRow | null> {
   return result[0] ?? null
 }
 
+/** Get a farm by its MABFC directory profile — to refuse a second farm claiming one. */
+export async function getFarmByDirectoryProfileId(profileId: string): Promise<FarmRow | null> {
+  const result = await getDb().select().from(farms).where(eq(farms.directoryProfileId, profileId))
+  return result[0] ?? null
+}
+
 /**
  * List all farms.
  *

@@ -50,7 +50,7 @@ export async function commitProposed(
     proposed.map((item) => teach(farmId, item.heardAs, item.product.toLowerCase().trim())),
   )
 
-  revalidatePath(`/f/${farmId}`)
+  revalidatePath('/f/[farm]', 'page')
   revalidatePath('/farm', 'layout')
 
   return { written: movements.length }
@@ -86,7 +86,7 @@ export async function commitRules(farmId: string, proposed: ProposedRule[], prop
     proposed.map((item) => teach(farmId, item.heardAs, item.product.toLowerCase().trim())),
   )
 
-  revalidatePath(`/f/${farmId}`)
+  revalidatePath('/f/[farm]', 'page')
   revalidatePath('/farm', 'layout')
 
   return { written: rules.length }
@@ -106,7 +106,7 @@ export async function markSoldOut(farmId: string, product: string) {
     }),
   )
 
-  revalidatePath(`/f/${farmId}`)
+  revalidatePath('/f/[farm]', 'page')
   revalidatePath('/farm', 'layout')
 
   return { soldOut: product }

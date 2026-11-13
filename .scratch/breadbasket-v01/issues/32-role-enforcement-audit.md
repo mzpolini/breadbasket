@@ -1,7 +1,7 @@
 # Role enforcement audit and tests
 
 Type: spec
-Status: ready-for-agent
+Status: done (pending: make the admins)
 Audience: us
 Blocked by: 31
 Parent: 30 · Brief item 2
@@ -31,3 +31,16 @@ Roles live in our `users` table, not in Clerk metadata. Keep it that way for the
 ## Done when
 
 A farmer can't reach the admin page or another farm's data, and an admin can reach all of it. The tests prove both.
+
+## Outcome
+
+**Audit findings, all fixed:**
+
+- Every Server Action and `/api/chat` already checked for itself. The gaps were the *pages*: `/farm/[farmId]` (chat, stock, preview) and `/admin` were protected only by their layout, which doesn't re-render between pages. Each page now calls `requireFarmAccess` / `requireAdmin` itself.
+- `/api/chat` let an admin through with no `farmId` at all; it now answers 400.
+- `requireAdmin` now returns the admin, so writes (37) can say who did them.
+- `/api/v1/*` is public to Clerk in `proxy.ts`; those handlers authenticate an API key (36).
+
+**Tests:** `lib/auth/roles.test.ts` runs the real session logic and proves a refused caller *writes nothing* (farmer vs another farm's page, actions and chat; farmer vs `/admin` and every admin action; admin allowed everything; pending and signed-out). `lib/auth/doors.test.ts` reads the source and fails for any Server Action, route handler or protected page that doesn't check, so tickets 35–41 can't forget. Handlers under `app/api/v1/` may satisfy it with `authenticateApiKey(` (36).
+
+**Still for a human:** make the three admins (invite them as admins through 37, or `scripts/make-admin.ts` for the first one) and keep the list outside the repo. The steps are in `BOOTSTRAP.md`.
