@@ -1,5 +1,6 @@
 'use server'
 
+import { clerkClient } from '@clerk/nextjs/server'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/auth/current-user'
@@ -26,7 +27,12 @@ import {
   openInvitationsForEmail,
   setClerkInvitation,
 } from '@/lib/storage/invitations'
-import { assignFarmerToFarm as assignFarmerRecord, getUserByEmail } from '@/lib/storage/users'
+import {
+  assignFarmerToFarm as assignFarmerRecord,
+  createUserIfAbsent,
+  getUserByEmail,
+  getUserRecord,
+} from '@/lib/storage/users'
 
 /**
  * Every export here starts by asking who is signed in — Server Actions are not
@@ -47,8 +53,21 @@ export async function assignFarmerToFarm(userId: string, farmId: string) {
     throw new Error(`Farm ${farmId} not found`)
   }
 
-  await assignFarmerRecord(userId, farmId)
-  revalidatePath('/admin')
+  if (await getUserRecord(userId)) {
+    await assignFarmerRecord(userId, farmId)
+  } else {
+    // Signed up without an invitation, so there's no row to update yet. The
+    // email comes from Clerk, never from the form.
+    const clerkUser = await (await clerkClient()).users.getUser(userId)
+    await createUserIfAbsent({
+      clerkId: userId,
+      role: 'farmer',
+      email: clerkUser.primaryEmailAddress?.emailAddress ?? '',
+      farmId,
+    })
+  }
+  // The layout's "waiting" badge too, not just the page.
+  revalidatePath('/admin', 'layout')
 }
 
 export type NewFarmInput = {
@@ -89,7 +108,7 @@ export async function createFarm(input: NewFarmInput): Promise<ActionResult<{ fa
     tagline: input.tagline?.trim() || undefined,
     market: input.market?.trim() || undefined,
   })
-  revalidatePath('/admin')
+  revalidatePath('/admin', 'layout')
   return { ok: true, farmId: farm.id }
 }
 

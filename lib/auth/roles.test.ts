@@ -37,6 +37,7 @@ vi.mock('../storage/users', () => ({
   getUserRecord: async (id: string) => db.users.get(id) ?? null,
   getUserByEmail: vi.fn(async () => null),
   assignFarmerToFarm: vi.fn(),
+  createUserIfAbsent: vi.fn(),
 }))
 
 // Everything an action or route could write to. None of it may be touched by a
@@ -95,7 +96,8 @@ import { checkFarmAccess, requireAdmin, requireFarmAccess } from './current-user
 import { appendMovements } from '../storage/movements'
 import { appendRules } from '../storage/harvest-rules'
 import { saveMessages } from '../storage/messages'
-import { assignFarmerToFarm } from '../storage/users'
+import { assignFarmerToFarm, createUserIfAbsent } from '../storage/users'
+import { clerkClient } from '@clerk/nextjs/server'
 import { createFarm as createFarmRecord } from '../storage/farms'
 import { insertInvitation, markRevoked } from '../storage/invitations'
 import { revokeClerkInvitation, sendClerkInvitation } from '../invitations/clerk'
@@ -237,6 +239,7 @@ describe('an admin', () => {
   })
 
   it('may use every admin action', async () => {
+    db.users.set('user_x', { id: 'user_x', role: 'farmer', farmId: null })
     for (const [name, call] of adminCalls) {
       await expect(call(), name).resolves.not.toThrow()
     }
@@ -247,6 +250,21 @@ describe('an admin', () => {
     expect(revokeClerkInvitation).toHaveBeenCalled()
     expect(issueKey).toHaveBeenCalledWith('MABFC directory: staging', 'user_admin')
     expect(revokeKey).toHaveBeenCalledWith('k1')
+  })
+
+  it('may give a farm to someone who signed up uninvited, with the email Clerk has', async () => {
+    vi.mocked(clerkClient).mockResolvedValue({
+      users: {
+        getUser: async () => ({ primaryEmailAddress: { emailAddress: 'walkin@example.com' } }),
+      },
+    } as never)
+    await adminActions.assignFarmerToFarm('user_walkin', 'farm_a')
+    expect(createUserIfAbsent).toHaveBeenCalledWith({
+      clerkId: 'user_walkin',
+      role: 'farmer',
+      email: 'walkin@example.com',
+      farmId: 'farm_a',
+    })
   })
 
   it("is refused a chat with no farm, rather than writing to nothing", async () => {
