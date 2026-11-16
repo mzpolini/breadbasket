@@ -31,9 +31,9 @@ export function AssignFarmerForm({
         name="farmId"
         required
         disabled={pending}
-        className="border rounded px-3 py-2 flex-1"
+        className="adm-input flex-1"
       >
-        <option value="">Select a farm...</option>
+        <option value="">Choose a farm…</option>
         {availableFarms.map((farm) => (
           <option key={farm.id} value={farm.id}>
             {farm.name}
@@ -43,9 +43,9 @@ export function AssignFarmerForm({
       <button
         type="submit"
         disabled={pending}
-        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded px-4 py-2"
+        className="btn btn-primary"
       >
-        {pending ? 'Assigning...' : 'Assign'}
+        {pending ? 'Assigning…' : 'Assign'}
       </button>
     </form>
   )

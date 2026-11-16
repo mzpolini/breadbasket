@@ -138,3 +138,19 @@ a.adm-tile:hover { box-shadow: var(--shadow-md); }
   .adm-tiles, .adm-tiles--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .adm-tile-value { font-size: 28px; }
 }
+
+/* Form controls — Organic's buttons (.btn in globals.css) plus inputs to match. */
+.adm-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.adm-hint { font-size: 12px; color: var(--adm-ink-3); margin-top: 4px; }
+.adm-input {
+  width: 100%; font: inherit; font-size: 14px; color: var(--color-text);
+  background: #fff; border: 1px solid var(--color-neutral-300); border-radius: 8px; padding: 8px 11px;
+}
+.adm-input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; border-color: var(--color-accent); }
+.adm-input:disabled { background: var(--color-neutral-200); color: var(--adm-ink-3); }
+select.adm-input { width: auto; max-width: 100%; }
+.adm .adm-check { accent-color: var(--color-accent); width: 16px; height: 16px; }
+.adm-alert { font-size: 13px; color: var(--color-accent-800); background: var(--color-accent-100); border-radius: 6px; padding: 6px 10px; }
+.adm-ok { font-size: 13px; color: var(--color-accent-2-800); background: var(--color-accent-2-200); border-radius: 6px; padding: 6px 10px; }
+.adm-danger { color: var(--color-accent-700); }
+.adm-fresh-key { border: 1px solid var(--color-accent-2-300); background: var(--color-accent-2-200); border-radius: 10px; padding: 14px 16px; }

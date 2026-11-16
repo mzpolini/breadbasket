@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Caprasimo, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ServiceWorkerRegister } from "@/app/_components/service-worker-register";
+import { clerkAppearance } from "@/app/_components/clerk-appearance";
 import "./globals.css";
 
 // Organic's pairing: Caprasimo for display, Figtree for everything else.
@@ -35,7 +36,8 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: "#f7f3e8" };
+// The app's own paper (--color-bg); the installed app opens into it.
+export const viewport: Viewport = { themeColor: "#f5ead8" };
 
 export default function RootLayout({
   children,
@@ -48,7 +50,7 @@ export default function RootLayout({
       className={`${figtree.variable} ${caprasimo.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>
+        <ClerkProvider appearance={clerkAppearance}>
           <ServiceWorkerRegister />
           {children}
         </ClerkProvider>

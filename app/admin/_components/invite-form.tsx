@@ -35,7 +35,7 @@ export function InviteForm({ farmId }: { farmId: string }) {
       className="space-y-4 max-w-md"
     >
       <div>
-        <label htmlFor="email" className="block text-sm font-medium mb-1">
+        <label htmlFor="email" className="adm-label">
           Email
         </label>
         <input
@@ -44,40 +44,40 @@ export function InviteForm({ farmId }: { farmId: string }) {
           type="email"
           required
           disabled={pending}
-          className="w-full border rounded px-3 py-2 disabled:bg-gray-100"
+          className="adm-input"
         />
       </div>
       <div className="flex items-start gap-2">
-        <input id="attested" name="attested" type="checkbox" required disabled={pending} className="mt-1" />
+        <input id="attested" name="attested" type="checkbox" required disabled={pending} className="adm-check mt-1" />
         <label htmlFor="attested" className="text-sm">
           Email matches this person&rsquo;s MABFC member record.
         </label>
       </div>
       <div>
-        <label htmlFor="role" className="block text-sm font-medium mb-1">
+        <label htmlFor="role" className="adm-label">
           Role
         </label>
-        <select id="role" name="role" defaultValue="farmer" disabled={pending} className="border rounded px-3 py-2">
+        <select id="role" name="role" defaultValue="farmer" disabled={pending} className="adm-input">
           <option value="farmer">Farmer</option>
           <option value="admin">Admin</option>
         </select>
       </div>
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="adm-alert">
           {error}
         </p>
       )}
       {sentTo && (
-        <p role="status" className="text-sm text-green-800">
+        <p role="status" className="adm-ok">
           Invitation sent to {sentTo}.
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded px-4 py-2"
+        className="btn btn-primary"
       >
-        {pending ? 'Sending...' : 'Send invitation'}
+        {pending ? 'Sending…' : 'Send invitation'}
       </button>
     </form>
   )

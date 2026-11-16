@@ -80,7 +80,7 @@ export default async function AdminPeoplePage({
             id="farm"
             name="farm"
             defaultValue={farmFilter ?? ''}
-            className="border rounded px-2 py-1 text-sm bg-white"
+            className="adm-input"
           >
             <option value="">All farms</option>
             {farms.map((f) => (
@@ -89,7 +89,7 @@ export default async function AdminPeoplePage({
               </option>
             ))}
           </select>
-          <button type="submit" className="border rounded px-3 py-1 text-sm bg-white">
+          <button type="submit" className="btn btn-secondary">
             Show
           </button>
         </form>

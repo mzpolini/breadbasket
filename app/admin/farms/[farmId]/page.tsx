@@ -126,7 +126,7 @@ export default async function AdminFarmPage({
                   {state === 'open' && (
                     <>
                       {invitation.url && (
-                        <p className="text-xs text-gray-600 break-all">
+                        <p className="adm-small break-all">
                           If the email doesn&rsquo;t arrive, send this link by hand:{' '}
                           <code>{invitation.url}</code>
                         </p>

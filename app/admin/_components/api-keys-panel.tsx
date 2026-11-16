@@ -28,12 +28,12 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyView[] }) {
   return (
     <div className="space-y-6">
       {fresh && (
-        <div role="status" className="border-2 border-green-600 rounded p-4 space-y-2 bg-green-50">
+        <div role="status" className="adm-fresh-key space-y-2">
           <p className="text-sm font-semibold">
             Key for &ldquo;{fresh.name}&rdquo; &mdash; copy it now. It will not be shown again.
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 break-all text-sm bg-white border rounded px-2 py-1">{fresh.key}</code>
+            <code className="adm-input flex-1 break-all">{fresh.key}</code>
             <button
               type="button"
               onClick={async () => {
@@ -44,7 +44,7 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyView[] }) {
                   setCopied(false)
                 }
               }}
-              className="border rounded px-3 py-1 text-sm"
+              className="btn btn-secondary"
             >
               {copied ? 'Copied' : 'Copy'}
             </button>
@@ -54,7 +54,7 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyView[] }) {
                 setFresh(null)
                 setCopied(false)
               }}
-              className="text-sm underline text-gray-600"
+              className="btn btn-ghost"
             >
               Done
             </button>
@@ -63,19 +63,19 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyView[] }) {
       )}
 
       {keys.length === 0 ? (
-        <p className="text-gray-600">No keys yet.</p>
+        <p className="adm-empty">No keys yet.</p>
       ) : (
         <ul className="space-y-2">
           {keys.map((key) => (
-            <li key={key.id} className="border rounded p-3 flex items-center justify-between gap-4">
+            <li key={key.id} className="adm-card flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="font-semibold">
                   {key.name}{' '}
-                  <span className={key.revoked ? 'text-red-700 text-sm' : 'text-green-800 text-sm'}>
-                    · {key.revoked ? 'revoked' : 'active'}
+                  <span className={`adm-badge ${key.revoked ? 'adm-badge--revoked' : 'adm-badge--farmer'}`}>
+                    {key.revoked ? 'revoked' : 'active'}
                   </span>
                 </p>
-                <p className="text-xs text-gray-600">
+                <p className="adm-small">
                   <code>{key.prefix}…</code> · last used{' '}
                   {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : 'never'}
                 </p>
@@ -92,7 +92,7 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyView[] }) {
                       if (!result.ok) setError(result.error)
                     })
                   }}
-                  className="text-sm text-red-700 underline disabled:text-gray-400"
+                  className="btn btn-ghost adm-danger"
                 >
                   Revoke
                 </button>
@@ -126,19 +126,19 @@ export function ApiKeysPanel({ keys }: { keys: ApiKeyView[] }) {
           required
           disabled={pending}
           placeholder="What it's for, e.g. MABFC directory: staging"
-          className="flex-1 border rounded px-3 py-2 disabled:bg-gray-100"
+          className="adm-input flex-1"
         />
         <button
           type="submit"
           disabled={pending}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded px-4 py-2"
+          className="btn btn-primary"
         >
-          {pending ? 'Issuing...' : 'Issue key'}
+          {pending ? 'Issuing…' : 'Issue key'}
         </button>
       </form>
 
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="adm-alert">
           {error}
         </p>
       )}
