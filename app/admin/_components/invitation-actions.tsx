@@ -17,12 +17,12 @@ export function InvitationActions({ invitationId }: { invitationId: string }) {
   }
 
   return (
-    <div className="flex items-center gap-3 text-sm">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       <button
         type="button"
         disabled={pending}
         onClick={() => run(resendInvitation, 'Sent again.')}
-        className="text-blue-700 underline disabled:text-gray-400"
+        className="btn btn-secondary"
       >
         Resend
       </button>
@@ -30,11 +30,11 @@ export function InvitationActions({ invitationId }: { invitationId: string }) {
         type="button"
         disabled={pending}
         onClick={() => run(revokeInvitation, 'Revoked.')}
-        className="text-red-700 underline disabled:text-gray-400"
+        className="btn btn-ghost adm-danger"
       >
         Revoke
       </button>
-      {message && <span role="status" className="text-gray-600">{message}</span>}
+      {message && <span role="status" className="adm-small">{message}</span>}
     </div>
   )
 }

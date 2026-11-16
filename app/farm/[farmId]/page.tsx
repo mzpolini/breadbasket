@@ -25,8 +25,9 @@ export default async function FarmerChatPage({
   searchParams: Promise<{ v?: string }>
 }) {
   const { farmId } = await params
-  await requireFarmAccess(farmId)
-  const verbose = (await searchParams).v === '1'
+  const user = await requireFarmAccess(farmId)
+  // The machinery view is for whoever is debugging the farm, not the farmer.
+  const verbose = user.role === 'admin' && (await searchParams).v === '1'
 
   const [messages, publishedMovements, publishedRules, recorded] = await Promise.all([
     messagesForFarm(farmId),

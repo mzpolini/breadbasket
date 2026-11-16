@@ -1,87 +1,172 @@
 import Link from 'next/link'
+import { connection } from 'next/server'
+import { fillDays, fullTime, lastSeen } from '@/lib/admin'
 import { requireAdmin } from '@/lib/auth/current-user'
+import { activityByFarm, dailyActivity, usageSince } from '@/lib/storage/admin'
 import { listFarms } from '@/lib/storage/farms'
-import { listPendingUsers } from '@/lib/storage/users'
-import { ApiKeysPanel } from '@/app/admin/_components/api-keys-panel'
-import { listApiKeys } from '@/lib/storage/api-keys'
-import { AssignFarmerForm } from '@/app/admin/_components/assign-farmer-form'
-import { CreateFarmForm } from '@/app/admin/_components/create-farm-form'
+import { loadPeople } from '@/app/admin/_data'
+import { DailyBars, StatusBadge, Tile, When } from '@/app/admin/_components/ui'
 
-export default async function AdminPage() {
+const DAY = 24 * 60 * 60 * 1000
+const CHART_DAYS = 14
+
+/** The pilot at a glance: who's in, who's using it, and which farms have gone quiet. */
+export default async function AdminOverviewPage() {
   await requireAdmin()
-  const farms = await listFarms()
-  const pendingUsers = await listPendingUsers()
-  const apiKeys = await listApiKeys()
+  await connection()
+  const now = new Date()
+  const weekAgo = new Date(now.getTime() - 7 * DAY)
+
+  const [{ people, summary, clerkReachable }, farms, byFarm, daily, usage] = await Promise.all([
+    loadPeople(now),
+    listFarms(),
+    activityByFarm(weekAgo),
+    dailyActivity(new Date(now.getTime() - (CHART_DAYS + 1) * DAY)),
+    usageSince(weekAgo),
+  ])
+
+  const days = fillDays(daily, CHART_DAYS, now)
+  const farmsActive = farms.filter((f) => (byFarm.get(f.id)?.messages7d ?? 0) > 0).length
+  const recent = people
+    .filter((p) => p.clerkId)
+    .sort((a, b) => lastSeen(b) - lastSeen(a))
+    .slice(0, 8)
+  const farmRows = farms
+    .map((farm) => ({ farm, activity: byFarm.get(farm.id) }))
+    .sort(
+      (a, b) =>
+        (b.activity?.lastSpokenAt?.getTime() ?? 0) - (a.activity?.lastSpokenAt?.getTime() ?? 0),
+    )
+  const farmName = new Map(farms.map((f) => [f.id, f.name]))
 
   return (
-    <main className="max-w-4xl mx-auto p-6">
-      <h1 className="text-4xl font-bold mb-8">Admin</h1>
+    <>
+      <header className="adm-head">
+        <div>
+          <h1>Overview</h1>
+          <p className="adm-sub">The pilot at a glance · as of {fullTime(now)}</p>
+        </div>
+      </header>
 
-      {/* Farms List */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-semibold mb-4">Farms</h2>
-        {farms.length === 0 ? (
-          <p className="text-gray-600">No farms yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {farms.map((farm) => (
-              <div key={farm.id} className="border rounded p-4">
-                <Link href={`/admin/farms/${farm.id}`} className="text-blue-600 hover:underline">
-                  <span className="font-semibold">{farm.name}</span>
-                </Link>
-                <span className="text-sm text-gray-600">
-                  {' '}
-                  · /f/{farm.slug} · {farm.kyfVerified ? 'verified' : 'not verified'}
-                </span>
-                {farm.tagline && <p className="text-sm text-gray-600">{farm.tagline}</p>}
-              </div>
-            ))}
+      {!clerkReachable && (
+        <p className="adm-notice" role="status">
+          Couldn&rsquo;t reach Clerk, so sign-in times are missing and account counts only include
+          people with a farm or role.
+        </p>
+      )}
+
+      <section aria-label="People">
+        <div className="adm-tiles adm-tiles--6">
+          <Tile label="Accounts" value={summary.accounts} note="Signed up with Clerk" href="/admin/people" />
+          <Tile
+            label="Have signed in"
+            value={summary.signedIn}
+            note={`${summary.posted} have sent a message`}
+            href="/admin/people"
+          />
+          <Tile label="Active today" value={summary.active24h} note="Last 24 hours" />
+          <Tile label="Active this week" value={summary.active7d} note="Last 7 days" />
+          <Tile
+            label="Waiting for a farm"
+            value={summary.waiting}
+            note={summary.waiting ? 'Assign or ignore them' : 'Nobody waiting'}
+            href="/admin/people?status=waiting"
+            accent={summary.waiting > 0}
+          />
+          <Tile
+            label="Open invitations"
+            value={summary.invitations.open}
+            note={`${summary.invitations.accepted} accepted · ${summary.invitations.revoked} revoked`}
+            href="/admin/people?status=invited"
+          />
+        </div>
+      </section>
+
+      <section className="adm-section" aria-label="Usage this week">
+        <div className="adm-section-head">
+          <h2>This week</h2>
+          <span className="adm-small">Last 7 days, every farm</span>
+        </div>
+        <div className="adm-tiles adm-tiles--6">
+          <Tile label="Farms" value={farms.length} note={`${farms.filter((f) => f.kyfVerified).length} KYF-verified`} href="/admin/farms" />
+          <Tile label="Farms active" value={farmsActive} note={`of ${farms.length}, sent a message`} />
+          <Tile label="Messages sent" value={usage.messages7d} note="By farmers, to Breadbasket" />
+          <Tile label="Read-backs approved" value={usage.published7d} note="Published to the stand" />
+          <Tile label="Stock changes" value={usage.movements7d} note="Rows written to the ledger" />
+          <Tile label="Notes kept" value={usage.notes7d} note="Rhythms, plans, context" />
+        </div>
+      </section>
+
+      <section className="adm-section adm-card" aria-labelledby="daily-heading">
+        <div className="adm-section-head">
+          <h2 id="daily-heading">Messages per day</h2>
+          <span className="adm-small">
+            Last {CHART_DAYS} days · {days.reduce((n, d) => n + d.messages, 0)} in all
+          </span>
+        </div>
+        <DailyBars days={days} />
+      </section>
+
+      <div className="adm-section adm-grid-2">
+        <section className="adm-card" aria-labelledby="recent-heading">
+          <div className="adm-section-head">
+            <h2 id="recent-heading">Recently seen</h2>
+            <Link href="/admin/people">Everyone →</Link>
           </div>
-        )}
-      </section>
+          {recent.length === 0 ? (
+            <p className="adm-empty">Nobody has signed in yet.</p>
+          ) : (
+            <ul className="adm-list">
+              {recent.map((p) => (
+                <li key={p.key}>
+                  <span className="min-w-0">
+                    <span className="adm-email">{p.email ?? p.clerkId}</span>{' '}
+                    <StatusBadge status={p.status} />
+                    <br />
+                    <span className="adm-small">
+                      {p.farmId ? farmName.get(p.farmId) ?? p.farmId : 'No farm'}
+                      {p.messages > 0 && ` · ${p.messages} message${p.messages === 1 ? '' : 's'}`}
+                    </span>
+                  </span>
+                  <span className="adm-small text-right">
+                    <When at={p.lastActiveAt ?? p.lastSignInAt ?? p.lastPostedAt} now={now} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      {/* Create Farm */}
-      <section className="mb-12 border-t pt-8">
-        <h2 className="text-2xl font-semibold mb-4">Create Farm</h2>
-        <CreateFarmForm />
-      </section>
-
-      {/* API keys */}
-      <section className="mb-12 border-t pt-8">
-        <h2 className="text-2xl font-semibold mb-4">API keys</h2>
-        <ApiKeysPanel
-          keys={apiKeys.map((key) => ({
-            id: key.id,
-            name: key.name,
-            prefix: key.prefix,
-            createdAt: key.createdAt.toISOString(),
-            lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
-            revoked: key.revokedAt !== null,
-          }))}
-        />
-      </section>
-
-      {/* Pending Users */}
-      <section className="border-t pt-8">
-        <h2 className="text-2xl font-semibold mb-4">Pending Users</h2>
-        {pendingUsers.length === 0 ? (
-          <p className="text-gray-600">No pending users.</p>
-        ) : (
-          <div className="space-y-4">
-            {pendingUsers.map((user) => (
-              <div key={user.id} className="border rounded p-4">
-                <p className="font-semibold">{user.email || user.id}</p>
-                <p className="text-sm text-gray-600 mb-3">Signed up, not yet assigned to a farm</p>
-                <AssignFarmerForm
-                  userId={user.id}
-                  userEmail={user.email || user.id}
-                  availableFarms={farms}
-                />
-              </div>
-            ))}
+        <section className="adm-card" aria-labelledby="farms-heading">
+          <div className="adm-section-head">
+            <h2 id="farms-heading">Farms by last spoken</h2>
+            <Link href="/admin/farms">All farms →</Link>
           </div>
-        )}
-      </section>
-    </main>
+          {farmRows.length === 0 ? (
+            <p className="adm-empty">No farms yet.</p>
+          ) : (
+            <ul className="adm-list">
+              {farmRows.slice(0, 8).map(({ farm, activity }) => (
+                <li key={farm.id}>
+                  <span className="min-w-0">
+                    <Link href={`/admin/farms/${farm.id}`} className="adm-email">
+                      {farm.name}
+                    </Link>
+                    <br />
+                    <span className="adm-small">
+                      {activity?.people ?? 0} {activity?.people === 1 ? 'person' : 'people'} ·{' '}
+                      {activity?.messages7d ?? 0} messages this week
+                    </span>
+                  </span>
+                  <span className="adm-small text-right">
+                    {activity?.lastSpokenAt ? <When at={activity.lastSpokenAt} now={now} /> : 'never'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </>
   )
 }

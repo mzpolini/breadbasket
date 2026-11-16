@@ -1,9 +1,10 @@
 import { SignUp } from '@clerk/nextjs'
+import { AuthFrame } from '@/app/_components/auth-frame'
 
 export default function Page() {
   return (
-    <div className="flex min-h-dvh items-center justify-center p-4">
+    <AuthFrame>
       <SignUp fallbackRedirectUrl="/account" />
-    </div>
+    </AuthFrame>
   )
 }

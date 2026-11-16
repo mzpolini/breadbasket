@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { SignOutButton } from '@clerk/nextjs'
 import { usePathname, useSearchParams } from 'next/navigation'
 
 /**
@@ -20,7 +21,16 @@ import { usePathname, useSearchParams } from 'next/navigation'
  * written in Organic's vocabulary rather than invented: accent pill for the
  * current surface, muted for the rest, thumb-sized because this is one-handed.
  */
-export function FarmNav({ farmId, farmName }: { farmId: string; farmName: string }) {
+export function FarmNav({
+  farmId,
+  farmName,
+  isAdmin = false,
+}: {
+  farmId: string
+  farmName: string
+  /** Admins get the "working" toggle; farmers get sign out in its place. */
+  isAdmin?: boolean
+}) {
   const pathname = usePathname()
   const params = useSearchParams()
 
@@ -66,7 +76,22 @@ export function FarmNav({ farmId, farmName }: { farmId: string; farmName: string
           </span>
         </div>
 
-        {onTalk && (
+        {!isAdmin && (
+          <SignOutButton redirectUrl="/">
+            <button
+              type="button"
+              className="meta flex-none rounded-full px-[10px] py-[7px] text-[10.5px] leading-none"
+              style={{
+                border: '1px solid var(--color-divider)',
+                color: 'color-mix(in srgb, var(--color-text) 55%, transparent)',
+              }}
+            >
+              sign out
+            </button>
+          </SignOutButton>
+        )}
+
+        {isAdmin && onTalk && (
           <Link
             href={`${base}?v=${verbose ? '0' : '1'}`}
             className="meta flex-none rounded-full px-[10px] py-[7px] text-[10.5px] leading-none"

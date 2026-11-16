@@ -1,13 +1,13 @@
 {
   "name": "Breadbasket",
   "short_name": "Breadbasket",
-  "description": "Farm inventory and conversational ordering",
-  "start_url": "/",
+  "description": "Tell Breadbasket what you have; your farm stand stays current.",
+  "start_url": "/account",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#000000",
-  "background_color": "#ffffff",
+  "theme_color": "#f5ead8",
+  "background_color": "#f5ead8",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -42,13 +42,17 @@
       "form_factor": "narrow"
     }
   ],
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "food",
+    "productivity"
+  ],
   "shortcuts": [
     {
-      "name": "View Farm Inventory",
-      "short_name": "Inventory",
-      "description": "Check current farm inventory",
-      "url": "/farm/seed-farm",
+      "name": "Your stock",
+      "short_name": "Stock",
+      "description": "What your farm has right now",
+      "url": "/account?to=stock",
       "icons": [
         {
           "src": "/icon-192.png",
