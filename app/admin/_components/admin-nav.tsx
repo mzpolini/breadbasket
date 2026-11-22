@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/admin/people', label: 'People' },
   { href: '/admin/farms', label: 'Farms' },
   { href: '/admin/api-keys', label: 'API keys' },
+  { href: '/admin/almanac', label: 'Almanac' },
 ]
 
 export function AdminNav({ waiting }: { waiting: number }) {
