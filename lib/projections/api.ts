@@ -36,8 +36,8 @@ const ORDER = { in_season: 0, coming_soon: 1, gone: 2 } as const
  *
  * - `in_season` — on hand, not *none left*, and not silent for `goneAfterDays`.
  *   `available_until` is a standing rule's end date, if the farm has one.
- * - `coming_soon` — a standing harvest rule, or a dated one-off forecast whose
- *   window hasn't ended. Never stock.
+ * - `coming_soon` — a standing harvest rule, or a one-off forecast: dated, until
+ *   its window ends; undated, until `goneAfterDays` of silence. Never stock.
  * - `gone` — *none left* (he said so), sold out to zero, or silent for
  *   `goneAfterDays`. Reported for `GONE_REPORTED_DAYS` after it goes, then omitted.
  *
@@ -71,6 +71,10 @@ export function apiItems(
       if (balance.status === 'none') continue
       if (balance.status === 'known' && balance.quantity <= 0) continue
       if (window && window.to < today) continue
+      // "Green cabbage next month", said in September, still reads as coming
+      // soon in November unless something ends it. A dated window ends itself; an
+      // undated claim ages out with the same silence that makes stock gone.
+      if (!window && now.getTime() >= Date.parse(lastClaimAt) + goneAfterDays * MS_PER_DAY) continue
 
       candidates.push(
         item(name, 'coming_soon', lastClaimAt, {
