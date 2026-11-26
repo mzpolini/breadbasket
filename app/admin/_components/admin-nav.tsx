@@ -7,11 +7,12 @@ const LINKS = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/people', label: 'People' },
   { href: '/admin/farms', label: 'Farms' },
+  { href: '/admin/aidmin', label: 'AIdmin' },
   { href: '/admin/api-keys', label: 'API keys' },
   { href: '/admin/almanac', label: 'Almanac' },
 ]
 
-export function AdminNav({ waiting }: { waiting: number }) {
+export function AdminNav({ waiting, alarms }: { waiting: number; alarms: number }) {
   const pathname = usePathname()
   return (
     <nav className="adm-nav" aria-label="Admin">
@@ -24,6 +25,11 @@ export function AdminNav({ waiting }: { waiting: number }) {
             {link.href === '/admin/people' && waiting > 0 && (
               <span className="adm-count" title={`${waiting} waiting for a farm`}>
                 {waiting}
+              </span>
+            )}
+            {link.href === '/admin/aidmin' && alarms > 0 && (
+              <span className="adm-count" title={`${alarms} stuck in the last two days`}>
+                {alarms}
               </span>
             )}
           </Link>

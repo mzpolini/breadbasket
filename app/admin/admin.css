@@ -154,3 +154,26 @@ select.adm-input { width: auto; max-width: 100%; }
 .adm-ok { font-size: 13px; color: var(--color-accent-2-800); background: var(--color-accent-2-200); border-radius: 6px; padding: 6px 10px; }
 .adm-danger { color: var(--color-accent-700); }
 .adm-fresh-key { border: 1px solid var(--color-accent-2-300); background: var(--color-accent-2-200); border-radius: 10px; padding: 14px 16px; }
+
+.adm-badge--calm { background: var(--color-accent-2-200); color: var(--color-accent-2-800); }
+.adm-badge--watch { background: var(--color-accent-100); color: var(--color-accent-800); }
+.adm-badge--emergency { background: var(--color-accent); color: #fff; }
+.aidmin-review { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.aidmin-report { margin-bottom: 12px; }
+.aidmin-report h3 { font-size: 20px; margin: 10px 0 8px; }
+.aidmin-report > p, .aidmin-turn p { white-space: pre-wrap; font-size: 14px; line-height: 1.55; }
+.aidmin-report-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.aidmin-points { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.aidmin-points li { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.aidmin-points span { color: var(--adm-ink-2); }
+.aidmin-proposals { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--adm-line); }
+.aidmin-proposals h4 { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 8px; }
+.aidmin-thread { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 8px; }
+.aidmin-turn { border-radius: 10px; padding: 10px 12px; }
+.aidmin-turn--admin { background: var(--color-neutral-200); }
+.aidmin-turn--aidmin { background: #fff; border: 1px solid var(--adm-line); }
+.aidmin-who { font-size: 12px; font-weight: 700; margin-right: 8px; }
+.aidmin-turn time { font-size: 12px; color: var(--adm-ink-3); }
+.aidmin-thread-note { margin: -6px 0 14px; }
+.aidmin-ask { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
+.aidmin-ask-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

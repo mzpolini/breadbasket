@@ -439,6 +439,60 @@ export type ApiKeyRow = typeof apiKeys.$inferSelect
  * consumers, and Neon is already a dependency. Rows older than an hour are
  * swept lazily.
  */
+/**
+ * AIdmin reports — what Opus made of real farmer sessions.
+ *
+ * Append-only, like the ledger. A later briefing can disagree with an earlier
+ * one, and the disagreement is the record: admins can see what was noticed,
+ * and the next briefing is handed the earlier ones so it doesn't meet each
+ * day as if it were the first.
+ */
+export const aidminReports = pgTable(
+  'aidmin_reports',
+  {
+    id: text('id').primaryKey(),
+    /** 'daily' is the morning briefing. 'emergency' is someone stuck. */
+    kind: text('kind').notNull(),
+    /** 'calm' | 'watch' | 'emergency' — how hard to pay attention. */
+    urgency: text('urgency').notNull(),
+    title: text('title').notNull(),
+    /** The briefing itself, in prose. */
+    narrative: text('narrative').notNull(),
+    /** One line per farmer the window actually contained. */
+    farmers: jsonb('farmers').notNull(),
+    /** Schema or technical changes the sessions forced. Empty when nothing did. */
+    proposals: jsonb('proposals').notNull(),
+    coveredFrom: timestamp('covered_from', { withTimezone: true }).notNull(),
+    coveredTo: timestamp('covered_to', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [index('aidmin_reports_created_idx').on(table.createdAt)],
+)
+
+export type AidminReportRow = typeof aidminReports.$inferSelect
+
+/**
+ * The conversation between the human admins and AIdmin.
+ *
+ * One thread for the whole team. What an admin says here is guidance — how to
+ * treat a person, what not to worry about — and later briefings are handed it.
+ */
+export const aidminMessages = pgTable(
+  'aidmin_messages',
+  {
+    id: text('id').primaryKey(),
+    /** 'admin' | 'aidmin'. */
+    role: text('role').notNull(),
+    body: text('body').notNull(),
+    /** Clerk user id when an admin said it. Null on AIdmin's own replies. */
+    postedBy: text('posted_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [index('aidmin_messages_created_idx').on(table.createdAt)],
+)
+
+export type AidminMessageRow = typeof aidminMessages.$inferSelect
+
 export const apiRateWindows = pgTable(
   'api_rate_windows',
   {

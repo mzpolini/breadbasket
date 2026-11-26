@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import { requireAdmin } from '@/lib/auth/current-user'
+import { recentEmergencyCount } from '@/lib/storage/aidmin'
 import { listPendingUsers } from '@/lib/storage/users'
 import { AdminNav } from '@/app/admin/_components/admin-nav'
 import './admin.css'
@@ -17,7 +18,10 @@ export default async function AdminLayout({
   await requireAdmin()
   // Cheap, ours only: the badge is "farmers waiting for a farm". Uninvited Clerk
   // accounts are counted on the overview, which already pays for the Clerk call.
-  const pending = await listPendingUsers()
+  const [pending, alarms] = await Promise.all([
+    listPendingUsers(),
+    recentEmergencyCount(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)),
+  ])
 
   return (
     <div className="adm">
@@ -26,7 +30,7 @@ export default async function AdminLayout({
           Breadbasket
           <small>Admin</small>
         </div>
-        <AdminNav waiting={pending.length} />
+        <AdminNav waiting={pending.length} alarms={alarms} />
         <div className="adm-side-foot">
           <Link href="/">Public site ↗</Link>
           <UserButton />

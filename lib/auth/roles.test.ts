@@ -88,11 +88,17 @@ vi.mock('../api/keys', () => ({
   revokeKey: vi.fn(async () => true),
 }))
 vi.mock('../invitations/accept', () => ({ acceptInvitationFor: vi.fn(async () => null) }))
+vi.mock('@/lib/aidmin/run', () => ({
+  runReview: vi.fn(async () => ({ wrote: true })),
+  replyToAdmin: vi.fn(async () => 'noted'),
+}))
 
 import { commitProposed, commitRules, markSoldOut } from '@/app/farm/[farmId]/actions'
 import * as adminActions from '@/app/admin/_actions'
+import * as aidminActions from '@/app/admin/aidmin/actions'
 import { POST as chat } from '@/app/api/chat/route'
 import { checkFarmAccess, requireAdmin, requireFarmAccess } from './current-user'
+import { replyToAdmin, runReview } from '@/lib/aidmin/run'
 import { appendMovements } from '../storage/movements'
 import { appendRules } from '../storage/harvest-rules'
 import { saveMessages } from '../storage/messages'
@@ -169,6 +175,15 @@ const adminCalls: [string, () => Promise<unknown>][] = [
   ['revokeInvitation', () => adminActions.revokeInvitation('inv-1')],
   ['issueApiKey', () => adminActions.issueApiKey('MABFC directory: staging')],
   ['revokeApiKey', () => adminActions.revokeApiKey('k1')],
+  ['reviewSessionsNow', () => aidminActions.reviewSessionsNow(null, new FormData())],
+  [
+    'askAidmin',
+    () => {
+      const form = new FormData()
+      form.set('body', 'Leave her be until she asks.')
+      return aidminActions.askAidmin(null, form)
+    },
+  ],
 ]
 
 beforeEach(() => {
@@ -218,6 +233,8 @@ describe('a farmer', () => {
     expect(markRevoked).not.toHaveBeenCalled()
     expect(issueKey).not.toHaveBeenCalled()
     expect(revokeKey).not.toHaveBeenCalled()
+    expect(runReview).not.toHaveBeenCalled()
+    expect(replyToAdmin).not.toHaveBeenCalled()
   })
 })
 
