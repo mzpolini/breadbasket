@@ -11,6 +11,9 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
  * those handlers authenticate an API key themselves (ticket 36). A handler added
  * under it that forgets to is open to the world — which is why a test fails for
  * any route handler that checks nothing.
+ *
+ * `/api/cron/*` is the same shape for Vercel. The morning call has no session,
+ * so Clerk must let it through, and the handler checks `CRON_SECRET` itself.
  */
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -25,6 +28,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/openapi.json',
   '/api/v1/(.*)',
+  '/api/cron/(.*)',
 ])
 
 /**

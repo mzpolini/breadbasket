@@ -57,7 +57,14 @@ describe('route handlers', () => {
     it(`${rel(file)} checks who is calling`, () => {
       const source = read(file)
       const underV1 = rel(file).startsWith('app/api/v1/')
-      expect(source).toMatch(underV1 ? new RegExp(`${CHECKS.source}|${API_KEY_CHECK.source}`) : CHECKS)
+      // Vercel's cron has no session. The handler must read CRON_SECRET itself.
+      const underCron = rel(file).startsWith('app/api/cron/')
+      const expected = underV1
+        ? new RegExp(`${CHECKS.source}|${API_KEY_CHECK.source}`)
+        : underCron
+          ? /process\.env\.CRON_SECRET/
+          : CHECKS
+      expect(source).toMatch(expected)
     })
   }
 })
