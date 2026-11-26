@@ -55,7 +55,7 @@ function standingFacts(notes: { note: string }[]): string {
   if (notes.length === 0) return ''
 
   return [
-    '\n\n## What he has told you about this farm',
+    '\n\n## What they have told you about this farm',
     'Most recent first — where two say different things, the first one is true now.',
     ...notes.map((row) => `- ${row.note}`),
   ].join('\n')

@@ -86,7 +86,7 @@ export async function AvailabilityCard({ farm }: { farm: FarmIdentity & { id: st
           className="meta text-[12.5px] leading-[1.6]"
           style={{ color: 'color-mix(in srgb, var(--color-text) 50%, transparent)' }}
         >
-          If it&rsquo;s listed, he said so. If it&rsquo;s greyed, it&rsquo;s been a while.
+          If it&rsquo;s listed, they said so. If it&rsquo;s greyed, it&rsquo;s been a while.
         </span>
       )}
     </div>
@@ -196,7 +196,7 @@ function EmptyWeek() {
         className="text-[15px] leading-[1.6] text-pretty"
         style={{ color: 'color-mix(in srgb, var(--color-text) 72%, transparent)' }}
       >
-        He hasn&rsquo;t told us what&rsquo;s on hand. Rather than guess, this page shows
+        They haven&rsquo;t told us what&rsquo;s on hand. Rather than guess, this page shows
         you nothing &mdash; that&rsquo;s the deal.
       </span>
     </div>

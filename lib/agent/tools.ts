@@ -29,14 +29,14 @@ import { resolve } from '../vocabulary'
 
 /** Flat by necessity — schema compliance degrades past a few levels of nesting. */
 export const proposedMovementSchema = z.object({
-  product: z.string().describe('The crop, normalised to his own vocabulary where known'),
+  product: z.string().describe('The crop, normalised to their own vocabulary where known'),
   heardAs: z
     .string()
     .describe(
-      'The crop word he actually used, verbatim — "greens", "maters". If he ' +
-        'corrects the product, this is what gets taught as meaning it.',
+      'The crop word they actually used, verbatim — "greens", "maters". If they ' +
+        'correct the product, this is what gets taught as meaning it.',
     ),
-  rawPhrase: z.string().describe('What he actually said for this crop, verbatim'),
+  rawPhrase: z.string().describe('What they actually said for this crop, verbatim'),
   kind: z
     .enum(['add', 'remove', 'trueup'])
     .describe(
@@ -50,23 +50,23 @@ export const proposedMovementSchema = z.object({
     .describe(
       'Only on a remove: why it went. Deer or birds are wildlife, insects are ' +
         'pests, rot is spoiled, hail or drought is weather. Null on an add or a ' +
-        'true-up. Use other, never a guess, when he said why and none of these fit.',
+        'true-up. Use other, never a guess, when they said why and none of these fit.',
     ),
   amountValue: z
     .number()
     .nullable()
     .describe(
-      'Null when he gave no number — that is a valid claim, not a failure. On a ' +
+      'Null when they gave no number — that is a valid claim, not a failure. On a ' +
         'remove, null means all of it: the position empties.',
     ),
   amountUnit: z
     .string()
     .nullable()
-    .describe('His unit, as he says it: lb, bunch, bushel, box, dozen, head'),
+    .describe('Their unit, as they say it: lb, bunch, bushel, box, dozen, head'),
   measured: z
     .boolean()
     .describe(
-      'True only if he signalled measurement — weighed, counted, on the scale, ' +
+      'True only if they signalled measurement — weighed, counted, on the scale, ' +
         'or gave a non-round figure. A bare "50 pounds" is an estimate.',
     ),
   forecast: z
@@ -84,27 +84,27 @@ export type ProposedMovement = z.infer<typeof proposedMovementSchema>
  * only as "coming soon", in his own words.
  */
 export const proposedRuleSchema = z.object({
-  product: z.string().describe('The crop, normalised to his own vocabulary where known'),
-  heardAs: z.string().describe('The crop word he actually used, verbatim'),
+  product: z.string().describe('The crop, normalised to their own vocabulary where known'),
+  heardAs: z.string().describe('The crop word they actually used, verbatim'),
   rawPhrase: z
     .string()
     .describe(
-      'His whole sentence about this rhythm, verbatim — this is what buyers read. ' +
+      'Their whole sentence about this rhythm, verbatim — this is what buyers read. ' +
         '"about twenty pounds of watermelon every week through September"',
     ),
-  amountValue: z.number().nullable().describe('Expected amount per interval; null if he gave none'),
-  amountUnit: z.string().nullable().describe('His unit, as he says it'),
+  amountValue: z.number().nullable().describe('Expected amount per interval; null if they gave none'),
+  amountUnit: z.string().nullable().describe('Their unit, as they say it'),
   interval: z
     .string()
     .describe(
-      'Exactly "weekly" when he means once a week, however he phrased it. Anything ' +
-        'else — "tuesdays and thursdays", "every other week" — copy his words as-is.',
+      'Exactly "weekly" when they mean once a week, however they phrased it. Anything ' +
+        'else — "tuesdays and thursdays", "every other week" — copy their words as-is.',
     ),
-  startsOn: z.string().nullable().describe('YYYY-MM-DD if he said when it starts; else null'),
-  endsOn: z.string().nullable().describe('YYYY-MM-DD if he said when it ends; else null'),
+  startsOn: z.string().nullable().describe('YYYY-MM-DD if they said when it starts; else null'),
+  endsOn: z.string().nullable().describe('YYYY-MM-DD if they said when it ends; else null'),
   ended: z
     .boolean()
-    .describe('True only when he is saying the rhythm is over — "watermelon\'s done"'),
+    .describe('True only when they are saying the rhythm is over — "watermelon\'s done"'),
 })
 
 export type ProposedRule = z.infer<typeof proposedRuleSchema>
@@ -117,8 +117,8 @@ export function farmTools(farmId: string, postedBy?: string) {
   return {
     getCurrentStock: tool({
       description:
-        'What this farm currently has, folded from everything he has ever said. ' +
-        'Use it before asking him about a crop, and to name his crops back to him.',
+        'What this farm currently has, folded from everything they have ever said. ' +
+        'Use it before asking them about a crop, and to name their crops back to them.',
       inputSchema: z.object({}),
       execute: async () => {
         const now = new Date()
@@ -147,7 +147,7 @@ export function farmTools(farmId: string, postedBy?: string) {
             saidAs: rule.rawPhrase,
             interval: rule.interval,
             endsOn: rule.endsOn ?? null,
-            daysSinceHeMentionedIt: rule.daysSinceSpoken,
+            daysSinceMentioned: rule.daysSinceSpoken,
             flagged: rule.flagged,
           })),
         }
@@ -156,12 +156,12 @@ export function farmTools(farmId: string, postedBy?: string) {
 
     resolveProducts: tool({
       description:
-        "Match the words he used to crops this farm already knows. There is no " +
-        'canonical produce list — his vocabulary accretes from his own corrections, ' +
+        "Match the words they used to crops this farm already knows. There is no " +
+        'canonical produce list — their vocabulary accretes from their own corrections, ' +
         'so an unknown term is a new crop rather than an error. Use the product it ' +
-        'returns, not his word, when it comes back known.',
+        'returns, not their word, when it comes back known.',
       inputSchema: z.object({
-        terms: z.array(z.string()).describe('The crop words he used, verbatim'),
+        terms: z.array(z.string()).describe('The crop words they used, verbatim'),
       }),
       execute: async ({ terms }) => {
         const vocab = await vocabularyFor(farmId)
@@ -188,7 +188,7 @@ export function farmTools(farmId: string, postedBy?: string) {
 
     proposeMovements: tool({
       description:
-        'Show him what you heard, so he can correct it before anything is published. ' +
+        'Show them what you heard, so they can correct it before anything is published. ' +
         'Call this once you understand the whole message. It writes nothing.',
       inputSchema: z.object({
         movements: z.array(proposedMovementSchema),
@@ -202,11 +202,11 @@ export function farmTools(farmId: string, postedBy?: string) {
 
     proposeHarvestRules: tool({
       description:
-        'Show him what you heard about a harvest *rhythm* — a crop he expects to ' +
+        'Show them what you heard about a harvest *rhythm* — a crop they expect to ' +
         'pick on repeat: "twenty pounds of watermelon every week through September". ' +
         'Also for changing one ("make it fifteen"), re-affirming one at check-in ' +
         '("still on for watermelon"), or ending one ("watermelon\'s done"). ' +
-        'Never for stock he has now — that is proposeMovements. It writes nothing.',
+        'Never for stock they have now — that is proposeMovements. It writes nothing.',
       inputSchema: z.object({
         rules: z.array(proposedRuleSchema),
       }),
@@ -215,9 +215,9 @@ export function farmTools(farmId: string, postedBy?: string) {
 
     publishPending: tool({
       description:
-        'He has looked at the read-back and said it is right. Call this to put it up. ' +
-        'Only on an unambiguous yes to a read-back you have just shown him — never to ' +
-        'publish something he has not seen, and never on a qualified answer like ' +
+        'They have looked at the read-back and said it is right. Call this to put it up. ' +
+        'Only on an unambiguous yes to a read-back you have just shown them — never to ' +
+        'publish something they have not seen, and never on a qualified answer like ' +
         '"yes, but make it thirty", which is a correction and needs a fresh read-back.',
       inputSchema: z.object({}),
       /**
@@ -236,15 +236,15 @@ export function farmTools(farmId: string, postedBy?: string) {
 
     rememberAboutFarm: tool({
       description:
-        'Keep something he said about how the farm runs — a picking rhythm, a ' +
+        'Keep something they said about how the farm runs — a picking rhythm, a ' +
         'market day, a field coming in late. Only for standing facts, never for ' +
-        'stock: a quantity is a movement and belongs in proposeMovements. Use his ' +
-        'own words. Say it back in one short line so he can correct it.',
+        'stock: a quantity is a movement and belongs in proposeMovements. Use their ' +
+        'own words. Say it back in one short line so they can correct it.',
       inputSchema: z.object({
         note: z
           .string()
           .describe(
-            'One standing fact, in his phrasing — "picks Tuesdays and Thursdays". ' +
+            'One standing fact, in their phrasing — "picks Tuesdays and Thursdays". ' +
               'Not a quantity, and not a promise to do something later.',
           ),
       }),
